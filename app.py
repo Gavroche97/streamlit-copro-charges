@@ -507,8 +507,7 @@ elif page == "Simulation des charges":
         else:
         #Création d'un slider de consommation individuelle de chauffage pour ajuster les tantièmes utilisés dans le calcul des charges
             # consumption slider 0-200%
-            cons_pct = st.slider("Consommation individuelle de chauffage (%)", 0, 200, 100)
-            cons_frac = cons_pct / 100.0
+            cons_frac = st.slider("Consommation individuelle de chauffage (%)", 0, 200, 100) / 100.0
 
             # load persisted scenarios and restore selected owner if missing
             persisted = load_persisted_state()
@@ -571,7 +570,13 @@ elif page == "Simulation des charges":
                 owner_share = (owner_tantieme_used / total_tantiemes) if total_tantiemes else 0
                 owner_provision_indiv_annual = provisions_total * owner_share
 
-                row = {"Segment": segment_label, "Provision": prov, "Provisions - Résidence (Annuel)": provisions_total, "Provisions - Individuel (Annuel)": owner_provision_indiv_annual}
+                row = {
+                    "Segment": segment_label, 
+                    "Provision": prov, 
+                    "Provisions - Résidence (Annuel)": provisions_total, 
+                    "Provisions - Individuel (Annuel)": owner_provision_indiv_annual,
+                    "Provision - Individuel (Mensuel)": owner_provision_indiv_annual / 12.0
+                }
 
                 for si in range(1, 4):
                     scen = scenarios_persist.get(str(si), {})
