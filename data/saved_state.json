@@ -1,0 +1,162 @@
+{
+  "selected_owner_main": "Victor DINE",
+  "scenarios": {
+    "1": {
+      "filter": [],
+      "prestations_by_provision": {
+        "Eau froide": [
+          "1 - Consommation d'eau sobre"
+        ],
+        "Fourniture granulés bois": [
+          "1 - Consommation pour un hiver très doux"
+        ],
+        "Electricité": [],
+        "Gaz": [
+          "1 - Consommation pour un hiver très doux"
+        ],
+        "Contrat maintenance extincteurs": [],
+        "Entretien et petites réparations portes et serrures": [],
+        "Contrat maintenance VMC": [],
+        "Contrat maintenance ascenseurs 1 1": [
+          "Maintenance de l'ascenceur 1-1 (dessert 8 niveaux)"
+        ],
+        "Contrat maintenance toitures": [],
+        "Contrat P2 maintenance chaufferie": [
+          "Contrat d'entretien de la chaudière à gaz, bois et granules CRAM"
+        ],
+        "Contrat de maintenance des espaces verts": [],
+        "Contrat bacs à sable": [],
+        "Contrat ventilation parking": [],
+        "Rémunération du syndic Honoraires de gestion": [
+          "Syndic"
+        ],
+        "Frais postaux": [],
+        "Contrat colonne sèche": [],
+        "Assurance protection juridique": [
+          "Assurance juridique Juridica"
+        ],
+        "Contrat maintenance désenfumage": [],
+        "Contrat maintenance de nettoyage": [
+          "Entretien des parties communes 2 passages par semaine AT+Propre"
+        ],
+        "Contrat désenfumage en circulation": [],
+        "Contrat pompe de relevage": [],
+        "Contrat ferme porte": [],
+        "Contrat bloc secours": [],
+        "Frais postaux AG": [],
+        "Contrat de maintenance des portails  portes": [
+          "Entretien porte de parking Fermetic"
+        ],
+        "Assurance multirisque": [
+          "Assurance multirisques Allianz"
+        ],
+        "Entretien et réparations sur biens immobiliers": []
+      }
+    },
+    "2": {
+      "filter": [],
+      "prestations_by_provision": {
+        "Contrat bacs à sable": [],
+        "Assurance multirisque": [
+          "Assurance multirisques Allianz"
+        ],
+        "Contrat pompe de relevage": [],
+        "Contrat maintenance désenfumage": [],
+        "Frais postaux AG": [],
+        "Contrat maintenance VMC": [],
+        "Contrat bloc secours": [],
+        "Contrat désenfumage en circulation": [],
+        "Contrat colonne sèche": [],
+        "Entretien et réparations sur biens immobiliers": [],
+        "Frais postaux": [],
+        "Contrat maintenance toitures": [],
+        "Contrat ventilation parking": [],
+        "Contrat de maintenance des espaces verts": [],
+        "Fourniture granulés bois": [
+          "2 - Consommation pour un hiver doux"
+        ],
+        "Contrat P2 maintenance chaufferie": [
+          "Contrat d'entretien de la chaudière à gaz, bois et granules CRAM"
+        ],
+        "Contrat maintenance ascenseurs 1 1": [
+          "Maintenance de l'ascenceur 1-1 (dessert 8 niveaux)"
+        ],
+        "Contrat maintenance extincteurs": [],
+        "Contrat maintenance de nettoyage": [
+          "Entretien des parties communes 3 passages par semaine AT+Propre"
+        ],
+        "Rémunération du syndic Honoraires de gestion": [
+          "Syndic"
+        ],
+        "Gaz": [
+          "2 - Consommation pour un hiver doux"
+        ],
+        "Eau froide": [
+          "2 - Consommation d'eau rationnelle"
+        ],
+        "Assurance protection juridique": [
+          "Assurance juridique Juridica"
+        ],
+        "Electricité": [],
+        "Entretien et petites réparations portes et serrures": [],
+        "Contrat de maintenance des portails  portes": [
+          "Entretien porte de parking Fermetic"
+        ],
+        "Contrat ferme porte": []
+      }
+    },
+    "3": {
+      "filter": [],
+      "prestations_by_provision": {
+        "Contrat maintenance désenfumage": [],
+        "Electricité": [],
+        "Contrat ferme porte": [],
+        "Frais postaux AG": [],
+        "Rémunération du syndic Honoraires de gestion": [
+          "Syndic"
+        ],
+        "Contrat de maintenance des portails  portes": [
+          "Entretien porte de parking Fermetic"
+        ],
+        "Fourniture granulés bois": [
+          "3 - Consommation pour un hiver normal"
+        ],
+        "Entretien et réparations sur biens immobiliers": [],
+        "Contrat maintenance toitures": [],
+        "Eau froide": [
+          "3 - Consommation d'eau confortable"
+        ],
+        "Contrat ventilation parking": [],
+        "Contrat colonne sèche": [],
+        "Contrat bacs à sable": [],
+        "Contrat maintenance extincteurs": [],
+        "Frais postaux": [],
+        "Contrat maintenance VMC": [],
+        "Contrat pompe de relevage": [],
+        "Contrat désenfumage en circulation": [],
+        "Contrat maintenance de nettoyage": [
+          "Entretien des parties communes 3 passages par semaine AT+Propre"
+        ],
+        "Gaz": [
+          "3 - Consommation pour un hiver normal"
+        ],
+        "Assurance multirisque": [
+          "Assurance multirisques Allianz"
+        ],
+        "Contrat P2 maintenance chaufferie": [
+          "Contrat d'entretien de la chaudière à gaz, bois et granules CRAM"
+        ],
+        "Entretien et petites réparations portes et serrures": [],
+        "Contrat maintenance ascenseurs 1 1": [
+          "Maintenance de l'ascenceur 1-1 (dessert 8 niveaux)",
+          "Service de maintenance connectée de l'ascenceur 1-1"
+        ],
+        "Assurance protection juridique": [
+          "Assurance juridique Juridica"
+        ],
+        "Contrat de maintenance des espaces verts": [],
+        "Contrat bloc secours": []
+      }
+    }
+  }
+}
