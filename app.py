@@ -103,12 +103,33 @@ def load_persisted_state():
     return {}
 
 
+def normalize_provision_key(label: str) -> str:
+    return "".join([c if c.isalnum() else "_" for c in str(label)])
+
+
+def get_selected_prestations(selected_map: dict, provision_label: str) -> list:
+    if not selected_map:
+        return []
+    if provision_label in selected_map:
+        return selected_map.get(provision_label) or []
+
+    normalized_provision = normalize_provision_key(provision_label)
+    for saved_label, selected in selected_map.items():
+        if normalize_provision_key(saved_label) == normalized_provision:
+            return selected or []
+        if str(saved_label).replace(" ", "_") == normalized_provision:
+            return selected or []
+    return []
+
+
 def save_persisted_state():
     # Build a compact dict from session_state
     state = {}
     # owner
     if "selected_owner_main" in st.session_state:
         state["selected_owner_main"] = st.session_state.get("selected_owner_main")
+    if "total_tantiemes_global" in st.session_state:
+        state["total_tantiemes_global"] = st.session_state.get("total_tantiemes_global")
 
     # scenarios
     scenarios = {}
@@ -120,10 +141,10 @@ def save_persisted_state():
 
         prestations = {}
         prefix = f"scenario_{i}_props_"
+        provision_label_by_key = st.session_state.get("provision_label_by_key", {})
         for k, v in st.session_state.items():
             if k.startswith(prefix):
-                # recover label from key
-                prov_label = k.replace(prefix, "").replace("_", " ")
+                prov_label = provision_label_by_key.get(k, k.replace(prefix, "").replace("_", " "))
                 prestations[prov_label] = v
 
         scen["prestations_by_provision"] = prestations
@@ -387,8 +408,17 @@ elif page == "Sélection des prestations":
             # restore owner if saved and not already in session
             if persisted.get("selected_owner_main") and ("selected_owner_main" not in st.session_state or not st.session_state.get("selected_owner_main")):
                 st.session_state["selected_owner_main"] = persisted.get("selected_owner_main")
+            if "total_tantiemes_global" not in st.session_state:
+                st.session_state["total_tantiemes_global"] = int(persisted.get("total_tantiemes_global", 10007) or 10007)
 
             selected_owner = st.selectbox("Sélectionnez un copropriétaire", [""] + copro_names, key="selected_owner_main", on_change=save_persisted_state)
+            st.number_input(
+                "Total des tantièmes de référence",
+                min_value=1,
+                step=1,
+                key="total_tantiemes_global",
+                on_change=save_persisted_state,
+            )
             if not selected_owner:
                 st.warning("Veuillez sélectionner un copropriétaire pour commencer la simulation.")
             else:
@@ -454,16 +484,13 @@ elif page == "Sélection des prestations":
                                 prop_options = []
 
                             # safe key generation for Streamlit widgets
-                            safe_label = "".join([c if c.isalnum() else "_" for c in prov])
+                            safe_label = normalize_provision_key(prov)
                             key = f"scenario_{i}_props_{safe_label}"
+                            st.session_state.setdefault("provision_label_by_key", {})[key] = prov
                             # restore per-provision selections from persisted state if present
                             saved_vals = pers_scen.get("prestations_by_provision", {})
                             # saved_vals keys may have spaces; compare by normalizing prov
-                            saved_for_prov = None
-                            for saved_label, vals in saved_vals.items():
-                                if saved_label == prov or saved_label.replace(" ", "_") == safe_label:
-                                    saved_for_prov = vals
-                                    break
+                            saved_for_prov = get_selected_prestations(saved_vals, prov)
                             if saved_for_prov and (key not in st.session_state or not st.session_state.get(key)):
                                 st.session_state[key] = saved_for_prov
 
@@ -517,6 +544,9 @@ elif page == "Simulation des charges":
             if "selected_owner_main" not in st.session_state or not st.session_state.get("selected_owner_main"):
                 if persisted.get("selected_owner_main"):
                     st.session_state["selected_owner_main"] = persisted.get("selected_owner_main")
+            if "total_tantiemes_global" not in st.session_state:
+                st.session_state["total_tantiemes_global"] = int(persisted.get("total_tantiemes_global", 10007) or 10007)
+            total_tantiemes_reference = int(st.session_state.get("total_tantiemes_global", 10007) or 10007)
 
             # Construire les intitulés de lignes du tableau à partir des provisions
             budget_items = []
@@ -546,15 +576,17 @@ elif page == "Simulation des charges":
 
             #Les calculs de charges se font ici
             rows = []
+            calc_details = []
             for item in budget_items:
                 prov = item["label"]
                 provisions_total = float(item.get("provision", 0) or 0)
                 segment_label = item.get("segment", "")
                 id_series = item.get("id_series", [])
+                id_display = ", ".join(id_series)
 
                 owner = st.session_state.get("selected_owner_main", "")
                 owner_tantieme = 0.0
-                total_tantiemes = 10007
+                total_tantiemes = total_tantiemes_reference
                 #Récupération des tantièmes du copropriétaire et du total pour le poste de provision
                 for id1 in id_series:
                     id_t = map_id_to_tantieme(id1)
@@ -577,14 +609,32 @@ elif page == "Simulation des charges":
                     "Provisions - Individuel (Annuel)": owner_provision_indiv_annual,
                     "Provisions - Individuel (Mensuel)": owner_provision_indiv_annual / 12.0
                 }
+                calc_details.append({
+                    "Vue": "Provision",
+                    "Segment": segment_label,
+                    "Provision": prov,
+                    "ID1": id_display,
+                    "Prestations retenues": "Budget initial",
+                    "Lignes devis trouvées": "",
+                    "Tantièmes": owner_tantieme,
+                    "Tantièmes utilisés": owner_tantieme_used,
+                    "Tantièmes total": total_tantiemes,
+                    "Quote-part": owner_share,
+                    "Coût résidence": provisions_total,
+                    "Annuel copro": owner_provision_indiv_annual,
+                    "Mensuel copro": owner_provision_indiv_annual / 12.0,
+                    "Formule": f"{provisions_total:,.2f} € x {owner_tantieme_used:,.2f} / {total_tantiemes:,.0f}",
+                })
 
                 for si in range(1, 4):
                     scen = scenarios_persist.get(str(si), {})
                     selected_map = scen.get("prestations_by_provision", {})
-                    sel_props = selected_map.get(prov, [])
+                    sel_props = get_selected_prestations(selected_map, prov)
 
                     if sel_props and not props.empty:
                         matching = props[props["Label de la prestation"].isin(sel_props)]
+                        if "ID1" in props.columns and id_series:
+                            matching = matching[matching["ID1"].astype(str).isin(id_series)]
                         sum_selected = pd.to_numeric(matching.get("Total TTC", 0), errors="coerce").fillna(0).sum()
                         count_selected = matching.shape[0]
                     else:
@@ -606,6 +656,22 @@ elif page == "Simulation des charges":
                     row[f"Scénario {si} - Résidence"] = residence_value
                     row[f"Scénario {si} - Annuel copro"] = owner_indiv_annual
                     row[f"Scénario {si} - Mensuel copro"] = owner_monthly
+                    calc_details.append({
+                        "Vue": f"Scénario {si}",
+                        "Segment": segment_label,
+                        "Provision": prov,
+                        "ID1": id_display,
+                        "Prestations retenues": ", ".join(sel_props) if sel_props else "Budget initial",
+                        "Lignes devis trouvées": count_selected if sel_props else "",
+                        "Tantièmes": owner_tantieme,
+                        "Tantièmes utilisés": owner_tantieme_used,
+                        "Tantièmes total": total_tantiemes,
+                        "Quote-part": owner_share,
+                        "Coût résidence": residence_value,
+                        "Annuel copro": owner_indiv_annual,
+                        "Mensuel copro": owner_monthly,
+                        "Formule": f"{residence_value:,.2f} € x {owner_tantieme_used:,.2f} / {total_tantiemes:,.0f}",
+                    })
 
                 rows.append(row)
 
@@ -633,7 +699,11 @@ elif page == "Simulation des charges":
             df_display = pd.concat([df_display, pd.DataFrame([total_row])], ignore_index=True)
 
             # Allow user to pick which view to show (Provision or one Scenario)
-            display_mode = st.selectbox("Afficher", ["Provision", "Scénario 1", "Scénario 2", "Scénario 3"], index=0)
+            if "display_mode" not in st.session_state:
+                scenario_1 = scenarios_persist.get("1", {})
+                scenario_1_selections = scenario_1.get("prestations_by_provision", {}).values()
+                st.session_state["display_mode"] = "Scénario 1" if any(scenario_1_selections) else "Provision"
+            display_mode = st.selectbox("Afficher", ["Provision", "Scénario 1", "Scénario 2", "Scénario 3"], key="display_mode")
 
             # choose which numeric columns to display depending on mode
             if display_mode == "Provision":
@@ -686,3 +756,42 @@ elif page == "Simulation des charges":
             container = f"<div style=\"max-height:calc(100vh - 300px); overflow:auto;\">{html}</div>"
             components.html(style + container, height=900)
 
+            st.markdown("### Détail des calculs")
+            df_calc_details = pd.DataFrame(calc_details)
+            df_calc_view = df_calc_details[df_calc_details["Vue"] == display_mode].copy()
+            detail_numeric_cols = [
+                "Tantièmes",
+                "Tantièmes utilisés",
+                "Tantièmes total",
+                "Quote-part",
+                "Coût résidence",
+                "Annuel copro",
+                "Mensuel copro",
+            ]
+            if not df_calc_view.empty:
+                total_detail_row = {
+                    "Vue": display_mode,
+                    "Segment": "",
+                    "Provision": "Total",
+                    "ID1": "",
+                    "Prestations retenues": "",
+                    "Lignes devis trouvées": "",
+                    "Tantièmes": "",
+                    "Tantièmes utilisés": "",
+                    "Tantièmes total": total_tantiemes_reference,
+                    "Quote-part": "",
+                    "Coût résidence": df_calc_view["Coût résidence"].sum(),
+                    "Annuel copro": df_calc_view["Annuel copro"].sum(),
+                    "Mensuel copro": df_calc_view["Mensuel copro"].sum(),
+                    "Formule": "",
+                }
+                df_calc_view = pd.concat([df_calc_view, pd.DataFrame([total_detail_row])], ignore_index=True)
+
+            df_calc_display = df_calc_view.drop(columns=["Vue"])
+            for col in detail_numeric_cols:
+                if col in df_calc_display.columns:
+                    df_calc_display[col] = df_calc_display[col].map(
+                        lambda x: "" if x == "" or pd.isna(x) else f"{float(x):,.4f}" if col == "Quote-part" else f"{float(x):,.2f}"
+                    )
+
+            st.dataframe(df_calc_display, use_container_width=True, hide_index=True, height=420)
