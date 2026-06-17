@@ -91,6 +91,7 @@ expected_sheets = {
 # Persistence file for storing selections between sessions
 SAVE_DIR = "data"
 SAVE_PATH = os.path.join(SAVE_DIR, "saved_state.json")
+BUDGET_INITIAL_LABEL = "Budget initial"
 
 
 def load_persisted_state():
@@ -145,7 +146,12 @@ def save_persisted_state():
         for k, v in st.session_state.items():
             if k.startswith(prefix):
                 prov_label = provision_label_by_key.get(k, k.replace(prefix, "").replace("_", " "))
-                prestations[prov_label] = v
+                if isinstance(v, list):
+                    prestations[prov_label] = v
+                elif v and v != BUDGET_INITIAL_LABEL:
+                    prestations[prov_label] = [v]
+                else:
+                    prestations[prov_label] = []
 
         scen["prestations_by_provision"] = prestations
         scenarios[str(i)] = scen
@@ -451,66 +457,120 @@ elif page == "Sélection des prestations":
                     except Exception:
                         st.write(tantieme_diagnostics)
 
-                st.markdown("### Scénarios de simulation (3 simultanés)")
-                cols = st.columns(3)
-                scenarios = {}
-                for i, col in enumerate(cols, start=1):
-                    with col:
-                        st.markdown(f"#### Scénario {i}")
-                        filter_key = f"scenario_{i}_type_filter"
-                        # restore filter from persisted state
-                        pers_scen = persisted.get("scenarios", {}).get(str(i), {})
-                        if pers_scen.get("filter") and (filter_key not in st.session_state or not st.session_state.get(filter_key)):
-                            st.session_state[filter_key] = pers_scen.get("filter")
+                st.markdown("### Saisie du scénario")
+                scenario_labels = ["Scénario 1", "Scénario 2", "Scénario 3"]
+                active_scenario_label = st.selectbox("Scénario à modifier", scenario_labels, key="active_scenario_selector")
+                active_scenario = scenario_labels.index(active_scenario_label) + 1
+                active_scenario_key = str(active_scenario)
+                filter_key = f"scenario_{active_scenario}_type_filter"
 
-                        provision_filter = st.multiselect("Filtrer postes de provision (optionnel)", type_options, key=filter_key, on_change=save_persisted_state)
+                pers_scen = persisted.get("scenarios", {}).get(active_scenario_key, {})
+                if pers_scen.get("filter") and (filter_key not in st.session_state or not st.session_state.get(filter_key)):
+                    st.session_state[filter_key] = pers_scen.get("filter")
 
-                        prestations_by_prov = {}
-                        visible_types = type_options if not provision_filter else provision_filter
+                control_cols = st.columns([2, 1])
+                with control_cols[0]:
+                    provision_filter = st.multiselect("Afficher seulement certains postes", type_options, key=filter_key, on_change=save_persisted_state)
+                with control_cols[1]:
+                    show_modified_only = st.checkbox("Postes modifiés uniquement", key=f"scenario_{active_scenario}_modified_only")
 
-                        for prov in visible_types:
-                            diag = tantieme_diagnostics.get(prov, {})
-                            total_tantieme_for_owner = diag.get("total_tantieme", 0)
+                if st.button("Réinitialiser le scénario actif"):
+                    for prov in type_options:
+                        key = f"scenario_{active_scenario}_props_{normalize_provision_key(prov)}"
+                        st.session_state.setdefault("provision_label_by_key", {})[key] = prov
+                        st.session_state[key] = BUDGET_INITIAL_LABEL
+                    save_persisted_state()
+                    st.rerun()
 
-                            # If the owner's tantièmes for this provision are zero, skip showing the selector
-                            if total_tantieme_for_owner == 0:
-                                continue
+                prestations_by_prov = {}
+                visible_types = type_options if not provision_filter else provision_filter
 
-                            id_series = diag.get("id_series", [])
-                            if id_series:
-                                matching_props = props[props["ID1"].astype(str).isin(id_series)] if "ID1" in props.columns else pd.DataFrame()
-                                prop_options = matching_props["Label de la prestation"].dropna().unique().tolist()
-                            else:
-                                prop_options = []
+                header_cols = st.columns([1.4, 2.4, 1.0, 3.0, 1.2, 1.2])
+                header_cols[0].markdown("**Segment**")
+                header_cols[1].markdown("**Provision**")
+                header_cols[2].markdown("**Budget**")
+                header_cols[3].markdown("**Prestation retenue**")
+                header_cols[4].markdown("**Coût retenu**")
+                header_cols[5].markdown("**Écart**")
 
-                            # safe key generation for Streamlit widgets
-                            safe_label = normalize_provision_key(prov)
-                            key = f"scenario_{i}_props_{safe_label}"
-                            st.session_state.setdefault("provision_label_by_key", {})[key] = prov
-                            # restore per-provision selections from persisted state if present
-                            saved_vals = pers_scen.get("prestations_by_provision", {})
-                            # saved_vals keys may have spaces; compare by normalizing prov
-                            saved_for_prov = get_selected_prestations(saved_vals, prov)
-                            if saved_for_prov and (key not in st.session_state or not st.session_state.get(key)):
-                                st.session_state[key] = saved_for_prov
+                for prov in visible_types:
+                    diag = tantieme_diagnostics.get(prov, {})
+                    id_series = diag.get("id_series", [])
+                    matching_budget = budget[budget["Label de la provision"] == prov]
+                    segment_label = ""
+                    budget_amount = 0.0
+                    if not matching_budget.empty:
+                        segment_label = str(matching_budget.iloc[0].get("Segment", "") or "")
+                        budget_amount = float(pd.to_numeric(matching_budget["Provision"], errors="coerce").fillna(0).sum())
 
-                            selected = st.multiselect(prov, prop_options, key=key, on_change=save_persisted_state)
-                            prestations_by_prov[prov] = selected
+                    if id_series:
+                        matching_props = props[props["ID1"].astype(str).isin(id_series)] if "ID1" in props.columns else pd.DataFrame()
+                        prop_options = matching_props["Label de la prestation"].dropna().unique().tolist()
+                    else:
+                        matching_props = pd.DataFrame()
+                        prop_options = []
 
-                        scenarios[i] = {"filter": provision_filter, "prestations_by_provision": prestations_by_prov}
+                    safe_label = normalize_provision_key(prov)
+                    key = f"scenario_{active_scenario}_props_{safe_label}"
+                    st.session_state.setdefault("provision_label_by_key", {})[key] = prov
+                    saved_for_prov = get_selected_prestations(pers_scen.get("prestations_by_provision", {}), prov)
+                    options = [BUDGET_INITIAL_LABEL] + prop_options
+                    default_value = saved_for_prov[0] if saved_for_prov and saved_for_prov[0] in options else BUDGET_INITIAL_LABEL
+
+                    if key not in st.session_state or isinstance(st.session_state.get(key), list) or st.session_state.get(key) not in options:
+                        st.session_state[key] = default_value
+
+                    selected_value = st.session_state.get(key, BUDGET_INITIAL_LABEL)
+                    if show_modified_only and selected_value == BUDGET_INITIAL_LABEL:
+                        continue
+
+                    row_cols = st.columns([1.4, 2.4, 1.0, 3.0, 1.2, 1.2])
+                    row_cols[0].write(segment_label)
+                    row_cols[1].write(prov)
+                    row_cols[2].write(f"{budget_amount:,.2f} €")
+                    with row_cols[3]:
+                        selected_value = st.selectbox(
+                            prov,
+                            options,
+                            key=key,
+                            label_visibility="collapsed",
+                            disabled=len(prop_options) == 0,
+                            on_change=save_persisted_state,
+                        )
+
+                    selected_props = [] if selected_value == BUDGET_INITIAL_LABEL else [selected_value]
+                    prestations_by_prov[prov] = selected_props
+                    if selected_props and not matching_props.empty:
+                        retained_cost = pd.to_numeric(
+                            matching_props[matching_props["Label de la prestation"].isin(selected_props)].get("Total TTC", 0),
+                            errors="coerce",
+                        ).fillna(0).sum()
+                    else:
+                        retained_cost = budget_amount
+                    cost_delta = retained_cost - budget_amount
+                    row_cols[4].write(f"{retained_cost:,.2f} €")
+                    row_cols[5].write(f"{cost_delta:+,.2f} €")
 
                 st.markdown("---")
-                st.markdown("### Récapitulatif rapide des scénarios sélectionnés")
+                st.markdown("### Récapitulatif rapide des scénarios")
+                scenarios = {active_scenario: {"filter": provision_filter, "prestations_by_provision": prestations_by_prov}}
                 for i in range(1, 4):
-                    s = scenarios.get(i, {})
-                    st.write(f"**Scénario {i}**")
-                    any_selected = False
-                    for prov_label, sels in s.get("prestations_by_provision", {}).items():
+                    if i == active_scenario:
+                        selected_map = scenarios[i]["prestations_by_provision"]
+                    else:
+                        selected_map = persisted.get("scenarios", {}).get(str(i), {}).get("prestations_by_provision", {})
+
+                    selected_lines = []
+                    for prov in type_options:
+                        sels = get_selected_prestations(selected_map, prov)
                         if sels:
-                            any_selected = True
-                            st.write(f"- {prov_label}: {', '.join(sels)}")
-                    if not any_selected:
-                        st.write("- (aucune prestation sélectionnée)")
+                            selected_lines.append(f"- {prov}: {', '.join(sels)}")
+
+                    with st.expander(f"Scénario {i} ({len(selected_lines)} poste(s) modifié(s))", expanded=(i == active_scenario)):
+                        if selected_lines:
+                            st.write("\n".join(selected_lines))
+                        else:
+                            st.write("(aucune prestation sélectionnée)")
 
                 st.markdown(f"Vous avez sélectionné le copropriétaire : **{selected_owner}**.")
 
