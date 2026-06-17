@@ -308,16 +308,16 @@ if page == "Importer le fichier":
     # -----------------------------------------------------
 
     st.write("Bienvenue dans l'application de calcul des charges de copropriété.")
-    st.write("Téléchargez ci-dessous le modèle Excel `Les Terrasses de Gallieni.xlsx` et utilisez-le pour préparer votre import.")
+    st.write("Téléchargez ci-dessous le modèle Excel `Modele.xlsx` et utilisez-le pour préparer votre import.")
     st.write("Le fichier doit contenir plusieurs feuilles, comme indiqué dans le modèle.")
 
-    download_path = "data/Les Terrasses de Gallieni.xlsx"
+    download_path = "data/Modele.xlsx"
     try:
         with open(download_path, "rb") as f:
             st.download_button(
                 label="Télécharger le modèle Excel",
                 data=f,
-                file_name="Les Terrasses de Gallieni.xlsx",
+                file_name="Modele.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
     except FileNotFoundError:
