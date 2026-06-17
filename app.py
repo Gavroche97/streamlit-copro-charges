@@ -575,7 +575,7 @@ elif page == "Simulation des charges":
                     "Provision": prov, 
                     "Provisions - Résidence (Annuel)": provisions_total, 
                     "Provisions - Individuel (Annuel)": owner_provision_indiv_annual,
-                    "Provision - Individuel (Mensuel)": owner_provision_indiv_annual / 12.0
+                    "Provisions - Individuel (Mensuel)": owner_provision_indiv_annual / 12.0
                 }
 
                 for si in range(1, 4):
