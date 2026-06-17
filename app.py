@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 import json
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Calculateur de Charges de Copropriété", layout="wide", initial_sidebar_state="expanded")
 
@@ -245,8 +246,45 @@ def get_owner_tantieme_for_id(id_tantieme: str, selected_owner: str, copro_df: p
 
     return 0.0
 
+
+def get_total_tantiemes_for_id(id_tantieme: str, copro_df: pd.DataFrame) -> float:
+    """Return total tantièmes across all copropriétaires for the given id_tantieme."""
+    if copro_df is None or copro_df.empty:
+        return 0.0
+
+    ID_TO_COLUMN = {
+        "TOTAL": "Tantièmes copropriété",
+        "ASC11": "Tantièmes ascenseur 1-1",
+        "ASC12": "Tantièmes ascenseur 1-2",
+        "ASC2": "Tantièmes ascenseur 2",
+        "ASC3": "Tantièmes ascenseur 3",
+        "BAT1": "Tantièmes Batiment 1",
+        "BAT2": "Tantièmes Batiment 2",
+        "BAT3": "Tantièmes Batiment 3",
+        "CHAUFF": "Tantièmes chauffage",
+        "HALL11": "Tantièmes Hall 1-1",
+        "HALL12": "Tantièmes Hall 1-2",
+        "HALL2": "Tantièmes Hall 2",
+        "LOG/STAT": "Tantièmes Logement/Stationnements",
+        "PARKING": "Tantièmes Logement/Stationnements",
+    }
+
+    preferred_col = ID_TO_COLUMN.get(id_tantieme)
+    if preferred_col and preferred_col in copro_df.columns:
+        vals = copro_df[preferred_col]
+        vals_num = pd.to_numeric(vals, errors="coerce").fillna(0)
+        return float(vals_num.sum())
+
+    # fallback: sum all 'tanti' columns
+    cols = [c for c in copro_df.columns if "tanti" in c.lower()]
+    if cols:
+        vals = copro_df[cols].apply(pd.to_numeric, errors="coerce").fillna(0)
+        return float(vals.values.sum())
+
+    return 0.0
+
 sidebar_title = st.sidebar.title("Copro Charges")
-page = st.sidebar.radio("Navigation", ["Importer le fichier", "Sélection des prestations"])
+page = st.sidebar.radio("Navigation", ["Importer le fichier", "Sélection des prestations", "Simulation des charges"])
 
 st.title("Calculateur de Charges de Copropriété")
 
@@ -447,3 +485,189 @@ elif page == "Sélection des prestations":
                         st.write("- (aucune prestation sélectionnée)")
 
                 st.markdown(f"Vous avez sélectionné le copropriétaire : **{selected_owner}**.")
+
+elif page == "Simulation des charges":
+    st.header("Simulation des charges")
+    st.write("Ici vous pouvez visualiser l'impact des scénarios sur les charges annuelles et mensuelles du copropriétaire sélectionné.")
+    if st.session_state.get("uploaded_data") is None:
+        st.warning("Aucun fichier importé. Allez sur la page 'Importer le fichier' pour ajouter les données.")
+    else:
+        data = st.session_state["uploaded_data"]
+        budget = data.get("Budget", pd.DataFrame())
+        props = data.get("Propositions", pd.DataFrame())
+        copro = data.get("Copropriétaires", pd.DataFrame())
+
+        if budget.empty or copro.empty:
+            st.error("Les feuilles 'Budget' et 'Copropriétaires' sont nécessaires pour cette simulation.")
+        else:
+            # consumption slider 0-200%
+            cons_pct = st.slider("Consommation individuelle de chauffage (%)", 0, 200, 100)
+            cons_frac = cons_pct / 100.0
+
+            # load persisted scenarios and restore selected owner if missing
+            persisted = load_persisted_state()
+            scenarios_persist = persisted.get("scenarios", {})
+            if "selected_owner_main" not in st.session_state or not st.session_state.get("selected_owner_main"):
+                if persisted.get("selected_owner_main"):
+                    st.session_state["selected_owner_main"] = persisted.get("selected_owner_main")
+
+            # build rows by iterating budget rows (no aggregation) and explode Segment values
+            budget_items = []
+            for _, brow in budget.iterrows():
+                label = brow.get("Label de la provision")
+                if pd.isna(label):
+                    continue
+                prov_amount = brow.get("Provision", 0)
+                id1_val = brow.get("ID1") if "ID1" in brow.index else None
+                id_series_row = []
+                if pd.notna(id1_val):
+                    id_series_row = [str(id1_val)]
+
+                seg_field = brow.get("Segment", "")
+                if pd.isna(seg_field) or str(seg_field).strip() == "":
+                    segments = [""]
+                else:
+                    segments = [s.strip() for s in str(seg_field).split(",")]
+
+                for seg in segments:
+                    budget_items.append({
+                        "segment": seg,
+                        "label": label,
+                        "provision": prov_amount,
+                        "id_series": id_series_row,
+                    })
+
+            rows = []
+            for item in budget_items:
+                prov = item["label"]
+                provisions_total = float(item.get("provision", 0) or 0)
+                segment_label = item.get("segment", "")
+                id_series = item.get("id_series", [])
+
+                owner = st.session_state.get("selected_owner_main", "")
+                owner_tantieme = 0.0
+                total_tantiemes = 0.0
+                for id1 in id_series:
+                    id_t = map_id_to_tantieme(id1)
+                    owner_tantieme += get_owner_tantieme_for_id(id_t, owner, copro)
+                    total_tantiemes += get_total_tantiemes_for_id(id_t, copro)
+
+                # heating adjustment
+                heating_ids = {"GAZ", "GRANULEBOIS"}
+                if any(id1 in heating_ids for id1 in id_series):
+                    owner_tantieme_used = owner_tantieme * 0.3 + 0.7 * owner_tantieme * cons_frac
+                else:
+                    owner_tantieme_used = owner_tantieme
+
+                owner_share = (owner_tantieme_used / total_tantiemes) if total_tantiemes else 0
+                owner_provision_indiv_annual = provisions_total * owner_share
+
+                row = {"Segment": segment_label, "Provision": prov, "Provisions - Résidence (Annuel)": provisions_total, "Provisions - Individuel (Annuel)": owner_provision_indiv_annual}
+
+                for si in range(1, 4):
+                    scen = scenarios_persist.get(str(si), {})
+                    selected_map = scen.get("prestations_by_provision", {})
+                    sel_props = selected_map.get(prov, [])
+
+                    if sel_props and not props.empty:
+                        matching = props[props["Label de la prestation"].isin(sel_props)]
+                        sum_selected = pd.to_numeric(matching.get("Total TTC", 0), errors="coerce").fillna(0).sum()
+                        count_selected = matching.shape[0]
+                    else:
+                        sum_selected = 0.0
+                        count_selected = 0
+
+                    if count_selected == 0:
+                        residence_value = provisions_total
+                    else:
+                        residence_value = sum_selected
+
+                    if count_selected == 0:
+                        owner_indiv_annual = owner_provision_indiv_annual
+                    else:
+                        owner_indiv_annual = owner_share * sum_selected
+
+                    owner_monthly = owner_indiv_annual / 12.0
+
+                    row[f"Scénario {si} - Résidence"] = residence_value
+                    row[f"Scénario {si} - Annuel copro"] = owner_indiv_annual
+                    row[f"Scénario {si} - Mensuel copro"] = owner_monthly
+
+                rows.append(row)
+
+            df_out = pd.DataFrame(rows)
+            # reorder columns for readability: Segment, Provision, Provisions columns, then scenarios
+            others = [c for c in df_out.columns if c not in ("Provision", "Segment")]
+            df_out = df_out[["Segment", "Provision"] + others]
+
+            # display with larger height using two-level column headers
+            # keep 'Segment' and 'Provision' as text; numeric columns are the rest
+            numeric_cols = [c for c in df_out.columns if c not in ("Provision", "Segment")]
+            df_display = df_out.copy()
+            for c in numeric_cols:
+                df_display[c] = pd.to_numeric(df_display[c], errors="coerce").fillna(0)
+
+            # Add totals row for numeric columns
+            df_tot = df_display.copy()
+            if numeric_cols:
+                totals = {c: df_tot[c].sum() for c in numeric_cols}
+            else:
+                totals = {}
+            total_row = {"Segment": "", "Provision": "Total de charges"}
+            for c, v in totals.items():
+                total_row[c] = v
+            df_display = pd.concat([df_display, pd.DataFrame([total_row])], ignore_index=True)
+
+            # Allow user to pick which view to show (Provision or one Scenario)
+            display_mode = st.selectbox("Afficher", ["Provision", "Scénario 1", "Scénario 2", "Scénario 3"], index=0)
+
+            # choose which numeric columns to display depending on mode
+            if display_mode == "Provision":
+                display_numeric_cols = [c for c in df_display.columns if c.startswith("Provisions -")]
+            else:
+                # map 'Scénario 1' -> columns starting with 'Scénario 1 - '
+                scen_label = display_mode
+                display_numeric_cols = [c for c in df_display.columns if c.startswith(scen_label + " -")]
+
+            # Build the DataFrame to render (only Segment, Provision plus chosen numeric cols)
+            display_cols = ["Segment", "Provision"] + display_numeric_cols
+            df_for_html = df_display[display_cols].copy()
+            for c in display_numeric_cols:
+                df_for_html[c] = df_for_html[c].map(lambda x: f"{x:,.2f} €")
+
+            # Build MultiIndex columns: first level (group), second level (label)
+            tuples = []
+            for col in df_for_html.columns:
+                if col == "Segment":
+                    tuples.append(("", "Segment"))
+                elif col == "Provision":
+                    tuples.append(("", "Provision"))
+                elif col.startswith("Provisions -"):
+                    # e.g. 'Provisions - Résidence (Annuel)'
+                    second = col.replace("Provisions - ", "")
+                    tuples.append(("Provisions", second))
+                elif col.startswith("Scénario"):
+                    # 'Scénario X - Résidence' etc.
+                    parts = col.split(" - ")
+                    if len(parts) == 2:
+                        tuples.append((parts[0], parts[1]))
+                    else:
+                        tuples.append((col, ""))
+                else:
+                    tuples.append(("", col))
+
+            df_for_html.columns = pd.MultiIndex.from_tuples(tuples)
+
+            # Render as HTML to preserve multi-level headers and allow scrolling
+            html = df_for_html.to_html(index=False, border=0, classes="table table-striped table-sm")
+            # small CSS to keep it readable in Streamlit
+            style = """
+            <style>
+            .table {width:100%; border-collapse:collapse;}
+            .table th, .table td {padding:6px 8px; border:1px solid #ddd; text-align:left}
+            .table thead th {background:#fafafa;}
+            </style>
+            """
+            # Wrap table in a scrollable container sized to viewport so bottom rows remain reachable
+            container = f"<div style=\"max-height:calc(100vh - 300px); overflow:auto;\">{html}</div>"
+            components.html(style + container, height=900)
