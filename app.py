@@ -147,19 +147,20 @@ def map_id_to_tantieme(id_poste: str) -> str:
     m = id_poste.strip()
     if m in {"ASC11", "ASC12", "ASC2", "ASC3"}:
         return m
-    if m == "ELECBAT1":
+    elif m == "ELECBAT1":
         return "BAT1"
-    if m == "ELECBAT2":
+    elif m == "ELECBAT2":
         return "BAT2"
-    if m == "ELECBAT3":
+    elif m == "ELECBAT3":
         return "BAT3"
-    if m in {"GAZ", "GRANULEBOIS", "MAINTCHAUF"}:
+    elif m in {"GAZ", "GRANULEBOIS", "MAINTCHAUF"}:
         return "CHAUFF"
-    if m in {"BACSABLE", "MAINTPORT", "POMPERELEVAGE", "REPARPORT", "VENTILPARKING"}:
+    elif m in {"BACSABLE", "MAINTPORT", "POMPERELEVAGE", "REPARPORT", "VENTILPARKING"}:
         return "PARKING"
-    if m == "MAINTVERT":
+    elif m == "MAINTVERT":
         return "LOG/STAT"
-    return "TOTAL"
+    else:
+        return "TOTAL"
 
 
 _ID_TOKEN_MAP = {
@@ -487,11 +488,15 @@ elif page == "Sélection des prestations":
                 st.markdown(f"Vous avez sélectionné le copropriétaire : **{selected_owner}**.")
 
 elif page == "Simulation des charges":
+    #Titre de la page
     st.header("Simulation des charges")
     st.write("Ici vous pouvez visualiser l'impact des scénarios sur les charges annuelles et mensuelles du copropriétaire sélectionné.")
+    #On controle qu'un fichier de parametrage a été importé et que les feuilles nécessaires sont présentes
     if st.session_state.get("uploaded_data") is None:
         st.warning("Aucun fichier importé. Allez sur la page 'Importer le fichier' pour ajouter les données.")
     else:
+    #A partir d'ici on a les données 
+
         data = st.session_state["uploaded_data"]
         budget = data.get("Budget", pd.DataFrame())
         props = data.get("Propositions", pd.DataFrame())
@@ -500,6 +505,7 @@ elif page == "Simulation des charges":
         if budget.empty or copro.empty:
             st.error("Les feuilles 'Budget' et 'Copropriétaires' sont nécessaires pour cette simulation.")
         else:
+        #Création d'un slider de consommation individuelle de chauffage pour ajuster les tantièmes utilisés dans le calcul des charges
             # consumption slider 0-200%
             cons_pct = st.slider("Consommation individuelle de chauffage (%)", 0, 200, 100)
             cons_frac = cons_pct / 100.0
@@ -507,11 +513,13 @@ elif page == "Simulation des charges":
             # load persisted scenarios and restore selected owner if missing
             persisted = load_persisted_state()
             scenarios_persist = persisted.get("scenarios", {})
+            
+            
             if "selected_owner_main" not in st.session_state or not st.session_state.get("selected_owner_main"):
                 if persisted.get("selected_owner_main"):
                     st.session_state["selected_owner_main"] = persisted.get("selected_owner_main")
 
-            # build rows by iterating budget rows (no aggregation) and explode Segment values
+            # Construire les intitulés de lignes du tableau à partir des provisions
             budget_items = []
             for _, brow in budget.iterrows():
                 label = brow.get("Label de la provision")
@@ -537,6 +545,7 @@ elif page == "Simulation des charges":
                         "id_series": id_series_row,
                     })
 
+            #Les calculs de charges se font ici
             rows = []
             for item in budget_items:
                 prov = item["label"]
@@ -546,11 +555,11 @@ elif page == "Simulation des charges":
 
                 owner = st.session_state.get("selected_owner_main", "")
                 owner_tantieme = 0.0
-                total_tantiemes = 0.0
+                total_tantiemes = 10007
+                #Récupération des tantièmes du copropriétaire et du total pour le poste de provision
                 for id1 in id_series:
                     id_t = map_id_to_tantieme(id1)
                     owner_tantieme += get_owner_tantieme_for_id(id_t, owner, copro)
-                    total_tantiemes += get_total_tantiemes_for_id(id_t, copro)
 
                 # heating adjustment
                 heating_ids = {"GAZ", "GRANULEBOIS"}
@@ -671,3 +680,4 @@ elif page == "Simulation des charges":
             # Wrap table in a scrollable container sized to viewport so bottom rows remain reachable
             container = f"<div style=\"max-height:calc(100vh - 300px); overflow:auto;\">{html}</div>"
             components.html(style + container, height=900)
+
