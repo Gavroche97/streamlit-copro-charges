@@ -13,7 +13,40 @@ st.markdown(
     [data-testid="stSidebar"] * {{color: {SIDEBAR_TEXT} !important;}}
     .css-1d391kg, .css-1v3fvcr {{color: {SIDEBAR_TEXT} !important;}}
     button {{color: #ffffff !important;}}
-    .stDownloadButton button {{background-color: #5c2d91 !important; color: #ffffff !important;}}
+    .stDownloadButton button {{
+        background: linear-gradient(135deg, #5c2d91 0%, #7c3fa8 100%) !important;
+        color: #ffffff !important;
+        padding: 12px 24px !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        font-size: 16px !important;
+        cursor: pointer !important;
+        box-shadow: 0 4px 12px rgba(92, 45, 145, 0.3) !important;
+        transition: all 0.3s ease !important;
+    }}
+    .stDownloadButton button:hover {{
+        background: linear-gradient(135deg, #7c3fa8 0%, #9d4fbf 100%) !important;
+        box-shadow: 0 6px 16px rgba(92, 45, 145, 0.5) !important;
+        transform: translateY(-2px) !important;
+    }}
+    [data-testid="stFileUploadDropzone"] {{
+        background: linear-gradient(135deg, #f0e6ff 0%, #e6d4f0 100%) !important;
+        border: 2px dashed #5c2d91 !important;
+        border-radius: 12px !important;
+        padding: 24px !important;
+        text-align: center !important;
+        transition: all 0.3s ease !important;
+    }}
+    [data-testid="stFileUploadDropzone"]:hover {{
+        background: linear-gradient(135deg, #e6d4f0 0%, #ddc2e6 100%) !important;
+        border-color: #7c3fa8 !important;
+        box-shadow: 0 4px 16px rgba(92, 45, 145, 0.15) !important;
+    }}
+    .uploadedFileName {{
+        color: #5c2d91 !important;
+        font-weight: 600 !important;
+    }}
     </style>
     """,
     unsafe_allow_html=True,
@@ -58,15 +91,33 @@ page = st.sidebar.radio("Navigation", ["Importer le fichier", "Simulation des ch
 st.title("Calculateur de Charges de Copropriété")
 
 if page == "Importer le fichier":
+    # --- PATCH SÉCURITÉ VISUELLE POUR LE BOUTON BROWSE ---
+    st.markdown("""
+        <style>
+        /* Force le texte du bouton Browse à être visible (sombre) et ajoute un contour */
+        div[data-testid="stFileUploader"] button {
+            color: #31333F !important;
+            background-color: #f8f9fa !important;
+            border: 1px solid #d3d3d3 !important;
+        }
+        /* Optionnel : Changement de couleur au survol */
+        div[data-testid="stFileUploader"] button:hover {
+            background-color: #e2e6ea !important;
+            border-color: #dae0e5 !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    # -----------------------------------------------------
+
     st.write("Bienvenue dans l'application de calcul des charges de copropriété.")
-    st.write("Téléchargez ci-dessous le modèle Excel `Les Terrasses de Gallieni.xlsx` (le fichier exact présent dans le dossier `data`) et utilisez-le pour préparer votre import.")
+    st.write("Téléchargez ci-dessous le modèle Excel `Les Terrasses de Gallieni.xlsx` et utilisez-le pour préparer votre import.")
     st.write("Le fichier doit contenir plusieurs feuilles, comme indiqué dans le modèle.")
 
     download_path = "data/Les Terrasses de Gallieni.xlsx"
     try:
         with open(download_path, "rb") as f:
             st.download_button(
-                label="Télécharger le modèle Excel (fichier exact dans data)",
+                label="Télécharger le modèle Excel",
                 data=f,
                 file_name="Les Terrasses de Gallieni.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
