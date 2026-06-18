@@ -440,14 +440,14 @@ elif page == "Sélection des prestations":
 
                 # Precompute diagnostics for all provisions once (same for all scénarios)
                 tantieme_diagnostics = {}
-                for prov in type_options:
-                    id_series = budget[budget["Label de la provision"] == prov]["ID1"].dropna().astype(str).unique().tolist()
+                for LabelDuPosteDeProvision in type_options:
+                    id_series = budget[budget["Label de la provision"] == LabelDuPosteDeProvision]["ID1"].dropna().astype(str).unique().tolist()
                     total_tantieme_for_owner = 0.0
                     if id_series:
                         for id1 in id_series:
                             id_t = map_id_to_tantieme(id1)
                             total_tantieme_for_owner += get_owner_tantieme_for_id(id_t, selected_owner, copro)
-                    tantieme_diagnostics[prov] = {"id_series": id_series, "total_tantieme": total_tantieme_for_owner}
+                    tantieme_diagnostics[LabelDuPosteDeProvision] = {"id_series": id_series, "total_tantieme": total_tantieme_for_owner}
 
                 # Diagnostic affiché une seule fois sous la sélection du copropriétaire
                 if st.checkbox("Montrer diagnostics des tantièmes (pour le copropriétaire sélectionné)"):
@@ -475,9 +475,9 @@ elif page == "Sélection des prestations":
                     show_modified_only = st.checkbox("Postes modifiés uniquement", key=f"scenario_{active_scenario}_modified_only")
 
                 if st.button("Réinitialiser le scénario actif"):
-                    for prov in type_options:
-                        key = f"scenario_{active_scenario}_props_{normalize_provision_key(prov)}"
-                        st.session_state.setdefault("provision_label_by_key", {})[key] = prov
+                    for LabelDuPosteDeProvision in type_options:
+                        key = f"scenario_{active_scenario}_props_{normalize_provision_key(LabelDuPosteDeProvision)}"
+                        st.session_state.setdefault("provision_label_by_key", {})[key] = LabelDuPosteDeProvision
                         st.session_state[key] = BUDGET_INITIAL_LABEL
                     save_persisted_state()
                     st.rerun()
@@ -493,10 +493,10 @@ elif page == "Sélection des prestations":
                 header_cols[4].markdown("**Coût retenu**")
                 header_cols[5].markdown("**Écart**")
 
-                for prov in visible_types:
-                    diag = tantieme_diagnostics.get(prov, {})
+                for LabelDuPosteDeProvision in visible_types:
+                    diag = tantieme_diagnostics.get(LabelDuPosteDeProvision, {})
                     id_series = diag.get("id_series", [])
-                    matching_budget = budget[budget["Label de la provision"] == prov]
+                    matching_budget = budget[budget["Label de la provision"] == LabelDuPosteDeProvision]
                     segment_label = ""
                     budget_amount = 0.0
                     if not matching_budget.empty:
@@ -510,10 +510,10 @@ elif page == "Sélection des prestations":
                         matching_props = pd.DataFrame()
                         prop_options = []
 
-                    safe_label = normalize_provision_key(prov)
+                    safe_label = normalize_provision_key(LabelDuPosteDeProvision)
                     key = f"scenario_{active_scenario}_props_{safe_label}"
-                    st.session_state.setdefault("provision_label_by_key", {})[key] = prov
-                    saved_for_prov = get_selected_prestations(pers_scen.get("prestations_by_provision", {}), prov)
+                    st.session_state.setdefault("provision_label_by_key", {})[key] = LabelDuPosteDeProvision
+                    saved_for_prov = get_selected_prestations(pers_scen.get("prestations_by_provision", {}), LabelDuPosteDeProvision)
                     options = [BUDGET_INITIAL_LABEL] + prop_options
                     default_value = saved_for_prov[0] if saved_for_prov and saved_for_prov[0] in options else BUDGET_INITIAL_LABEL
 
@@ -526,11 +526,11 @@ elif page == "Sélection des prestations":
 
                     row_cols = st.columns([1.4, 2.4, 1.0, 3.0, 1.2, 1.2])
                     row_cols[0].write(segment_label)
-                    row_cols[1].write(prov)
+                    row_cols[1].write(LabelDuPosteDeProvision)
                     row_cols[2].write(f"{budget_amount:,.2f} €")
                     with row_cols[3]:
                         selected_value = st.selectbox(
-                            prov,
+                            LabelDuPosteDeProvision,
                             options,
                             key=key,
                             label_visibility="collapsed",
@@ -539,7 +539,7 @@ elif page == "Sélection des prestations":
                         )
 
                     selected_props = [] if selected_value == BUDGET_INITIAL_LABEL else [selected_value]
-                    prestations_by_prov[prov] = selected_props
+                    prestations_by_prov[LabelDuPosteDeProvision] = selected_props
                     if selected_props and not matching_props.empty:
                         retained_cost = pd.to_numeric(
                             matching_props[matching_props["Label de la prestation"].isin(selected_props)].get("Total TTC", 0),
@@ -561,10 +561,10 @@ elif page == "Sélection des prestations":
                         selected_map = persisted.get("scenarios", {}).get(str(i), {}).get("prestations_by_provision", {})
 
                     selected_lines = []
-                    for prov in type_options:
-                        sels = get_selected_prestations(selected_map, prov)
+                    for LabelDuPosteDeProvision in type_options:
+                        sels = get_selected_prestations(selected_map, LabelDuPosteDeProvision)
                         if sels:
-                            selected_lines.append(f"- {prov}: {', '.join(sels)}")
+                            selected_lines.append(f"- {LabelDuPosteDeProvision}: {', '.join(sels)}")
 
                     with st.expander(f"Scénario {i} ({len(selected_lines)} poste(s) modifié(s))", expanded=(i == active_scenario)):
                         if selected_lines:
@@ -608,7 +608,10 @@ elif page == "Simulation des charges":
                 st.session_state["total_tantiemes_global"] = int(persisted.get("total_tantiemes_global", 10007) or 10007)
             total_tantiemes_reference = int(st.session_state.get("total_tantiemes_global", 10007) or 10007)
 
+            ###----------------------------------------------------------------------
             # Construire les intitulés de lignes du tableau à partir des provisions
+            ###----------------------------------------------------------------------
+            
             budget_items = []
             for _, brow in budget.iterrows():
                 label = brow.get("Label de la provision")
@@ -634,12 +637,14 @@ elif page == "Simulation des charges":
                         "id_series": id_series_row,
                     })
 
+            ###----------------------------------------------------------------------
             #Les calculs de charges se font ici
+            ###----------------------------------------------------------------------
             rows = []
             calc_details = []
             for item in budget_items:
-                prov = item["label"]
-                provisions_total = float(item.get("provision", 0) or 0)
+                LabelDuPosteDeProvision = item["label"]
+                MontantDeLaProvision = float(item.get("provision", 0) or 0)
                 segment_label = item.get("segment", "")
                 id_series = item.get("id_series", [])
                 id_display = ", ".join(id_series)
@@ -660,19 +665,19 @@ elif page == "Simulation des charges":
                     owner_tantieme_used = owner_tantieme
 
                 owner_share = (owner_tantieme_used / total_tantiemes) if total_tantiemes else 0
-                owner_provision_indiv_annual = provisions_total * owner_share
+                owner_provision_indiv_annual = MontantDeLaProvision * owner_share
 
                 row = {
                     "Segment": segment_label, 
-                    "Provision": prov, 
-                    "Provisions - Résidence (Annuel)": provisions_total, 
+                    "Provision": LabelDuPosteDeProvision, 
+                    "Provisions - Résidence (Annuel)": MontantDeLaProvision, 
                     "Provisions - Individuel (Annuel)": owner_provision_indiv_annual,
                     "Provisions - Individuel (Mensuel)": owner_provision_indiv_annual / 12.0
                 }
                 calc_details.append({
                     "Vue": "Provision",
                     "Segment": segment_label,
-                    "Provision": prov,
+                    "Provision": LabelDuPosteDeProvision,
                     "ID1": id_display,
                     "Prestations retenues": "Budget initial",
                     "Lignes devis trouvées": "",
@@ -680,16 +685,16 @@ elif page == "Simulation des charges":
                     "Tantièmes utilisés": owner_tantieme_used,
                     "Tantièmes total": total_tantiemes,
                     "Quote-part": owner_share,
-                    "Coût résidence": provisions_total,
+                    "Coût résidence": MontantDeLaProvision,
                     "Annuel copro": owner_provision_indiv_annual,
                     "Mensuel copro": owner_provision_indiv_annual / 12.0,
-                    "Formule": f"{provisions_total:,.2f} € x {owner_tantieme_used:,.2f} / {total_tantiemes:,.0f}",
+                    "Formule": f"{MontantDeLaProvision:,.2f} € x {owner_tantieme_used:,.2f} / {total_tantiemes:,.0f}",
                 })
 
                 for si in range(1, 4):
                     scen = scenarios_persist.get(str(si), {})
                     selected_map = scen.get("prestations_by_provision", {})
-                    sel_props = get_selected_prestations(selected_map, prov)
+                    sel_props = get_selected_prestations(selected_map, LabelDuPosteDeProvision)
 
                     if sel_props and not props.empty:
                         matching = props[props["Label de la prestation"].isin(sel_props)]
@@ -702,7 +707,7 @@ elif page == "Simulation des charges":
                         count_selected = 0
 
                     if count_selected == 0:
-                        residence_value = provisions_total
+                        residence_value = MontantDeLaProvision
                     else:
                         residence_value = sum_selected
 
@@ -719,7 +724,7 @@ elif page == "Simulation des charges":
                     calc_details.append({
                         "Vue": f"Scénario {si}",
                         "Segment": segment_label,
-                        "Provision": prov,
+                        "Provision": LabelDuPosteDeProvision,
                         "ID1": id_display,
                         "Prestations retenues": ", ".join(sel_props) if sel_props else "Budget initial",
                         "Lignes devis trouvées": count_selected if sel_props else "",
