@@ -1,9 +1,8 @@
 {
-  "selected_owner_main": "",
-  "total_tantiemes_global": 1,
+  "selected_owner_main": "Lot 113",
+  "total_tantiemes_global": 10007,
   "scenarios": {
     "1": {
-      "filter": [],
       "prestations_by_provision": {
         "Contrat maintenance ascenseurs 3": [
           "Maintenance de l'ascenceur 3 (dessert 5 niveaux)"
@@ -16,18 +15,17 @@
         ],
         "Electricité": [],
         "Rémunération du syndic Honoraires de gestion": [
-          "Syndic",
-          "Assistance technique d'urgence en cas de sinistres sur les parties communes 24/7"
+          "Syndic"
         ],
         "Contrat désenfumage en circulation": [],
         "Contrat maintenance extincteurs": [],
         "Entretien et petites réparations portes et serrures": [],
-        "Eau froide": [
-          "1 - Consommation d'eau sobre"
-        ],
-        "Contrat maintenance désenfumage": [],
         "Contrat P2 maintenance chaufferie": [
           "Contrat d'entretien de la chaudière à gaz, bois et granules CRAM"
+        ],
+        "Contrat maintenance désenfumage": [],
+        "Eau froide": [
+          "1 - Consommation d'eau sobre"
         ],
         "Contrat maintenance ascenseurs 1-2": [
           "Maintenance de l'ascenceur 1-2 (dessert 8 niveaux)"
@@ -62,10 +60,74 @@
           "Entretien des parties communes 2 passages par semaine AT+Propre"
         ],
         "Contrat ferme porte": []
-      }
+      },
+      "filter": []
     },
     "2": {
-      "prestations_by_provision": {}
+      "filter": [],
+      "prestations_by_provision": {
+        "Assurance protection juridique": [
+          "Assurance juridique Juridica"
+        ],
+        "Rémunération du syndic Honoraires de gestion": [
+          "Syndic",
+          "Assistance technique d'urgence en cas de sinistres sur les parties communes 24/7"
+        ],
+        "Contrat maintenance de nettoyage": [
+          "Entretien des parties communes 3 passages par semaine AT+Propre"
+        ],
+        "Contrat désenfumage en circulation": [],
+        "Contrat bacs à sable": [],
+        "Frais postaux": [],
+        "Contrat colonne sèche": [],
+        "Contrat pompe de relevage": [],
+        "Contrat P2 maintenance chaufferie": [
+          "Contrat d'entretien de la chaudière à gaz, bois et granules CRAM"
+        ],
+        "Contrat maintenance ascenseurs 2": [
+          "Maintenance de l'ascenceur 2 (dessert 10 niveaux)",
+          "Service de maintenance connectée de l'ascenceur 2"
+        ],
+        "Entretien et réparations sur biens immobiliers": [],
+        "Contrat maintenance ascenseurs 3": [
+          "Maintenance de l'ascenceur 3 (dessert 5 niveaux)",
+          "Service de maintenance connectée de l'ascenceur 3"
+        ],
+        "Contrat maintenance désenfumage": [],
+        "Frais postaux AG": [],
+        "Contrat de maintenance des espaces verts": [],
+        "Contrat maintenance extincteurs": [],
+        "Entretien et petites réparations portes et serrures": [],
+        "Contrat maintenance ascenseurs 1-2": [
+          "Maintenance de l'ascenceur 1-2 (dessert 8 niveaux)",
+          "Service de maintenance connectée de l'ascenceur 1-2"
+        ],
+        "Eau froide": [
+          "3 - Consommation d'eau confortable"
+        ],
+        "Contrat de maintenance des portails, portes": [
+          "Entretien porte de parking Fermetic"
+        ],
+        "Gaz": [
+          "3 - Consommation pour un hiver normal"
+        ],
+        "Contrat maintenance toitures": [],
+        "Contrat maintenance ascenseurs 1-1": [
+          "Maintenance de l'ascenceur 1-1 (dessert 8 niveaux)",
+          "Service de maintenance connectée de l'ascenceur 1-1"
+        ],
+        "Contrat ferme porte": [],
+        "Contrat ventilation parking": [],
+        "Assurance multirisque": [
+          "Assurance multirisques Allianz"
+        ],
+        "Contrat bloc secours": [],
+        "Contrat maintenance VMC": [],
+        "Electricité": [],
+        "Fourniture granulés bois": [
+          "3 - Consommation pour un hiver normal"
+        ]
+      }
     },
     "3": {
       "prestations_by_provision": {}

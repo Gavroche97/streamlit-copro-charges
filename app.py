@@ -124,44 +124,64 @@ def get_selected_prestations(selected_map: dict, provision_label: str) -> list:
 
 
 def save_persisted_state():
-    # Build a compact dict from session_state
-    state = {}
-    # owner
-    if "selected_owner_main" in st.session_state:
-        state["selected_owner_main"] = st.session_state.get("selected_owner_main")
-    if "total_tantiemes_global" in st.session_state:
-        state["total_tantiemes_global"] = st.session_state.get("total_tantiemes_global")
+    # 1. Charger l'état complet existant
+    current_persisted_data = load_persisted_state()
 
-    # scenarios
-    scenarios = {}
+    # Mettre à jour le propriétaire et les tantièmes globaux depuis l'état de session actuel
+    if "selected_owner_main" in st.session_state:
+        current_persisted_data["selected_owner_main"] = st.session_state.get("selected_owner_main")
+    if "total_tantiemes_global" in st.session_state:
+        current_persisted_data["total_tantiemes_global"] = st.session_state.get("total_tantiemes_global")
+
+    # S'assurer que la clé 'scenarios' de niveau supérieur existe
+    if "scenarios" not in current_persisted_data:
+        current_persisted_data["scenarios"] = {}
+
+    # Parcourir tous les scénarios possibles (1, 2, 3)
+    # et mettre à jour leur état en fonction de ce qui est actuellement dans st.session_state.
+    # Cela garantit que seules les données du scénario *actuellement rendu* sont mises à jour,
+    # tandis que les données des autres scénarios (non rendus) restent telles qu'elles ont été chargées.
     for i in range(1, 4):
-        scen = {}
+        scenario_key = str(i)
+        
+        # S'assurer que la structure de ce scénario existe dans les données chargées
+        if scenario_key not in current_persisted_data["scenarios"]:
+            current_persisted_data["scenarios"][scenario_key] = {}
+        
+        # Mettre à jour le filtre pour ce scénario s'il est dans session_state
         filter_key = f"scenario_{i}_type_filter"
         if filter_key in st.session_state:
-            scen["filter"] = st.session_state.get(filter_key)
+            current_persisted_data["scenarios"][scenario_key]["filter"] = st.session_state.get(filter_key)
+        # Si la clé de filtre n'est PAS dans session_state, cela signifie que ce scénario n'est pas actif
+        # ou que son filtre a été effacé. Nous ne devrions PAS écraser le filtre persistant avec une liste vide
+        # à moins qu'il n'ait été explicitement effacé pour le scénario actif.
+        # La logique actuelle est : si filter_key est dans st.session_state, le mettre à jour. C'est correct.
 
-        prestations = {}
+        # Collecter les prestations pour ce scénario depuis st.session_state
+        # Cela ne trouvera des clés que pour le scénario *actuellement rendu*.
+        prestations_for_this_scenario = {}
         prefix = f"scenario_{i}_props_"
-        provision_label_by_key = st.session_state.get("provision_label_by_key", {})
+        provision_label_by_key = st.session_state.get("provision_label_by_key", {}) # Ce dict est rempli lorsque les multiselects sont rendus
+
+        found_any_prestations_for_this_scenario = False
         for k, v in st.session_state.items():
             if k.startswith(prefix):
+                found_any_prestations_for_this_scenario = True
                 prov_label = provision_label_by_key.get(k, k.replace(prefix, "").replace("_", " "))
-                if isinstance(v, list):
-                    prestations[prov_label] = v
-                elif v and v != BUDGET_INITIAL_LABEL:
-                    prestations[prov_label] = [v]
-                else:
-                    prestations[prov_label] = []
+                prestations_for_this_scenario[prov_label] = v if isinstance(v, list) else ([v] if v and v != BUDGET_INITIAL_LABEL else [])
+        
+        # Mettre à jour prestations_by_provision uniquement si des clés ont été trouvées pour ce scénario dans st.session_state.
+        # Cela évite d'écraser les prestations sauvegardées d'un scénario avec un dictionnaire vide
+        # si ce scénario n'est pas actuellement actif/rendu.
+        if found_any_prestations_for_this_scenario:
+            current_persisted_data["scenarios"][scenario_key]["prestations_by_provision"] = prestations_for_this_scenario
 
-        scen["prestations_by_provision"] = prestations
-        scenarios[str(i)] = scen
-
-    state["scenarios"] = scenarios
-
+    # 2. Sauvegarder l'état complet mis à jour
+    state_to_save = current_persisted_data # Renommage pour la clarté
     try:
         os.makedirs(SAVE_DIR, exist_ok=True)
         with open(SAVE_PATH, "w", encoding="utf-8") as f:
-            json.dump(state, f, ensure_ascii=False, indent=2)
+            json.dump(state_to_save, f, ensure_ascii=False, indent=2)
     except Exception as exc:
         # best effort: show a non-blocking message in session state for debugging
         st.session_state["persist_error"] = str(exc)
@@ -322,7 +342,7 @@ def get_total_tantiemes_for_id(id_tantieme: str, copro_df: pd.DataFrame) -> floa
 
     return 0.0
 
-sidebar_title = st.sidebar.title("Copro Charges")
+sidebar_title = st.sidebar.title("Sommaire")
 page = st.sidebar.radio("Navigation", ["Importer le fichier", "Sélection des prestations", "Simulation des charges"])
 
 st.title("Calculateur de Charges de Copropriété")
@@ -470,7 +490,7 @@ elif page == "Sélection des prestations":
 
                 st.markdown("### Saisie du scénario")
                 scenario_labels = ["Scénario 1", "Scénario 2", "Scénario 3"]
-                active_scenario_label = st.selectbox("Scénario à modifier", scenario_labels, key="active_scenario_selector")
+                active_scenario_label = st.selectbox("Scénario à modifier", scenario_labels, key="active_scenario_selector", on_change=save_persisted_state)
                 active_scenario = scenario_labels.index(active_scenario_label) + 1
                 active_scenario_key = str(active_scenario)
                 filter_key = f"scenario_{active_scenario}_type_filter"
@@ -488,8 +508,8 @@ elif page == "Sélection des prestations":
                 if st.button("Réinitialiser le scénario actif"):
                     for LabelDuPosteDeProvision in type_options:
                         key = f"scenario_{active_scenario}_props_{normalize_provision_key(LabelDuPosteDeProvision)}"
-                        st.session_state.setdefault("provision_label_by_key", {})[key] = LabelDuPosteDeProvision
-                        st.session_state[key] = BUDGET_INITIAL_LABEL
+                        st.session_state.setdefault("provision_label_by_key", {})[key] = LabelDuPosteDeProvision # S'assurer que le mapping est présent
+                        st.session_state[key] = [] # Réinitialiser le multiselect à une liste vide
                     save_persisted_state()
                     st.rerun()
 
@@ -529,8 +549,9 @@ elif page == "Sélection des prestations":
                     saved_for_prov = get_selected_prestations(pers_scen.get("prestations_by_provision", {}), LabelDuPosteDeProvision)
                     options = prop_options
                     
-                    if key not in st.session_state:
-                        st.session_state[key] = [p for p in saved_for_prov if p in options]
+                    # Always initialize st.session_state[key] with the persisted value for the active scenario.
+                    # This ensures that when switching scenarios, the multiselect reflects the saved state.
+                    st.session_state[key] = [p for p in saved_for_prov if p in options]
 
                     if show_modified_only and not st.session_state.get(key):
                         continue
@@ -666,12 +687,17 @@ elif page == "Simulation des charges":
                     id_t = map_id_to_tantieme(id1)
                     owner_tantieme += get_owner_tantieme_for_id(id_t, owner, copro)
 
+                owner_tantieme_formula_part = "" # Initialize
                 # heating adjustment
                 heating_ids = {"GAZ", "GRANULEBOIS"}
                 if any(id1 in heating_ids for id1 in id_series):
                     owner_tantieme_used = owner_tantieme * 0.3 + 0.7 * owner_tantieme * cons_frac
+                    # Explicitly show the heating adjustment calculation in the formula
+                    owner_tantieme_formula_part = f"({owner_tantieme:,.2f} x 0.3 + {owner_tantieme:,.2f} x 0.7 x {cons_frac:,.2f})"
                 else:
                     owner_tantieme_used = owner_tantieme
+                    # Simple tantieme value for the formula
+                    owner_tantieme_formula_part = f"{owner_tantieme:,.2f}"
 
                 owner_share = (owner_tantieme_used / total_tantiemes) if total_tantiemes else 0
                 owner_provision_indiv_annual = MontantDeLaProvision * owner_share
@@ -697,7 +723,7 @@ elif page == "Simulation des charges":
                     "Coût résidence": MontantDeLaProvision,
                     "Annuel copro": owner_provision_indiv_annual,
                     "Mensuel copro": owner_provision_indiv_annual / 12.0,
-                    "Formule": f"{MontantDeLaProvision:,.2f} € x {owner_tantieme_used:,.2f} / {total_tantiemes:,.0f}",
+                    "Formule": f"{MontantDeLaProvision:,.2f} € x {owner_tantieme_formula_part} / {total_tantiemes:,.0f}",
                 })
 
                 for si in range(1, 4):
@@ -744,7 +770,7 @@ elif page == "Simulation des charges":
                         "Coût résidence": residence_value,
                         "Annuel copro": owner_indiv_annual,
                         "Mensuel copro": owner_monthly,
-                        "Formule": f"{residence_value:,.2f} € x {owner_tantieme_used:,.2f} / {total_tantiemes:,.0f}",
+                        "Formule": f"{residence_value:,.2f} € x {owner_tantieme_formula_part} / {total_tantiemes:,.0f}",
                     })
 
                 rows.append(row)
@@ -826,9 +852,9 @@ elif page == "Simulation des charges":
             .table thead th {background:#fafafa;}
             </style>
             """
-            # Wrap table in a scrollable container sized to viewport so bottom rows remain reachable
-            container = f"<div style=\"max-height:calc(100vh - 300px); overflow:auto;\">{html}</div>"
-            components.html(style + container, height=900)
+            # Calcul de la hauteur dynamique pour éviter l'ascenseur (environ 40px par ligne + 100px pour les entêtes multi-niveaux)
+            table_height = (len(df_for_html) * 40) + 100
+            components.html(style + html, height=table_height)
 
             st.markdown("### Détail des calculs")
             df_calc_details = pd.DataFrame(calc_details)
@@ -880,6 +906,8 @@ elif page == "Simulation des charges":
                         else:
                             df_calc_display[col] = df_calc_display[col].apply(lambda x: f"{x:,.2f} €" if pd.notnull(x) and x != 0 else ("0.00 €" if x == 0 else ""))
                 
-                st.dataframe(df_calc_display, use_container_width=True, hide_index=True, height=600)
+                # Calcul de la hauteur dynamique pour le dataframe (environ 35px par ligne + entête)
+                calc_height = (len(df_calc_display) + 1) * 35 + 5
+                st.dataframe(df_calc_display, use_container_width=True, hide_index=True, height=calc_height)
             else:
                 st.info("Aucune donnée à afficher pour ce scénario.")
