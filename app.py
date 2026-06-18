@@ -187,6 +187,30 @@ def save_persisted_state():
         st.session_state["persist_error"] = str(exc)
 
 
+# --- New callback functions for the simplified prestation selection UI ---
+def add_prestation_to_scenario(provision_label, prestation_label, active_scenario):
+    safe_label = normalize_provision_key(provision_label)
+    key = f"scenario_{active_scenario}_props_{safe_label}"
+    if key not in st.session_state:
+        st.session_state[key] = []
+    if prestation_label not in st.session_state[key]:
+        st.session_state[key].append(prestation_label)
+    save_persisted_state()
+
+def remove_prestation_from_scenario(provision_label, prestation_label, active_scenario):
+    safe_label = normalize_provision_key(provision_label)
+    key = f"scenario_{active_scenario}_props_{safe_label}"
+    if key in st.session_state and prestation_label in st.session_state[key]:
+        st.session_state[key].remove(prestation_label)
+    save_persisted_state()
+
+def set_viewed_prestation_details(provision_label, prestation_label):
+    st.session_state['current_viewed_prestation_label'] = prestation_label
+    st.session_state['current_viewed_provision_label'] = provision_label
+    # Force a rerun to display details immediately
+    st.rerun()
+
+
 def map_id_to_tantieme(id_poste: str) -> str:
     """Map Budget.ID1 to the ID used for tantièmes (DAX mapping provided by user)."""
     if not isinstance(id_poste, str):
@@ -428,6 +452,11 @@ elif page == "Sélection des prestations":
         st.warning("Aucun fichier importé. Veuillez d'abord importer le fichier Excel sur la page 'Importer le fichier'.")
     else:
         data = st.session_state["uploaded_data"]
+        # Ensure detail view state is initialized
+        if 'current_viewed_prestation_label' not in st.session_state:
+            st.session_state['current_viewed_prestation_label'] = None
+        if 'current_viewed_provision_label' not in st.session_state:
+            st.session_state['current_viewed_provision_label'] = None
         props = data.get("Propositions", pd.DataFrame())
         copro = data.get("Copropriétaires", pd.DataFrame())
         budget = data.get("Budget", pd.DataFrame())
@@ -503,8 +532,7 @@ elif page == "Sélection des prestations":
                 with control_cols[0]:
                     provision_filter = st.multiselect("Afficher seulement certains postes", type_options, key=filter_key, on_change=save_persisted_state)
                 with control_cols[1]:
-                    show_modified_only = st.checkbox("Postes modifiés uniquement", key=f"scenario_{active_scenario}_modified_only")
-
+                    # show_modified_only checkbox removed for simplification
                 if st.button("Réinitialiser le scénario actif"):
                     for LabelDuPosteDeProvision in type_options:
                         key = f"scenario_{active_scenario}_props_{normalize_provision_key(LabelDuPosteDeProvision)}"
@@ -513,25 +541,61 @@ elif page == "Sélection des prestations":
                     save_persisted_state()
                     st.rerun()
 
-                prestations_by_prov = {}
+                # --- Prestation Details Display Area ---
+                st.markdown("---")
+                st.subheader("Détails de la prestation sélectionnée")
+                if st.session_state['current_viewed_prestation_label']:
+                    viewed_prestation_label = st.session_state['current_viewed_prestation_label']
+                    viewed_provision_label = st.session_state['current_viewed_provision_label']
+                    
+                    # Find the prestation in the 'Propositions' DataFrame
+                    details_df = props[
+                        (props["Label de la prestation"] == viewed_prestation_label)
+                    ]
+                    
+                    if not details_df.empty:
+                        detail = details_df.iloc[0]
+                        st.write(f"**Poste de provision:** {viewed_provision_label}")
+                        st.write(f"**Prestation:** {detail.get('Label de la prestation', 'N/A')}")
+                        st.write(f"**Prestataire:** {detail.get('Prestataire', 'N/A')}")
+                        st.write(f"**Coût (HT):** {detail.get('Cout', 0):,.2f} €")
+                        st.write(f"**Taxes:** {detail.get('Taxes', 0):,.2f} €")
+                        st.write(f"**Total TTC:** {detail.get('Total TTC', 0):,.2f} €")
+                        st.write(f"**Description:** {detail.get('Description', 'N/A')}")
+                    else:
+                        st.info("Détails non trouvés pour la prestation sélectionnée.")
+                else:
+                    st.info("Cliquez sur 'Détails' à côté d'une prestation pour afficher ses informations ici.")
+                st.markdown("---")
+
                 visible_types = type_options if not provision_filter else provision_filter
 
-                header_cols = st.columns([1.4, 2.4, 1.0, 3.0, 1.2, 1.2])
-                header_cols[0].markdown("**Segment**")
-                header_cols[1].markdown("**Provision**")
-                header_cols[2].markdown("**Budget**")
-                header_cols[3].markdown("**Prestation retenue**")
-                header_cols[4].markdown("**Coût retenu**")
-                header_cols[5].markdown("**Écart**")
+                # Initialize session state for current scenario's prestations if not already done
+                for LabelDuPosteDeProvision in visible_types:
+                    safe_label = normalize_provision_key(LabelDuPosteDeProvision)
+                    key = f"scenario_{active_scenario}_props_{safe_label}"
+                    st.session_state.setdefault("provision_label_by_key", {})[key] = LabelDuPosteDeProvision
+                    
+                    if key not in st.session_state:
+                        saved_for_prov = get_selected_prestations(pers_scen.get("prestations_by_provision", {}), LabelDuPosteDeProvision)
+                        
+                        # Re-calculate prop_options for initialization
+                        id_series_for_init = budget[budget["Label de la provision"] == LabelDuPosteDeProvision]["ID1"].dropna().astype(str).unique().tolist()
+                        if id_series_for_init:
+                            matching_props_for_init = props[props["ID1"].astype(str).isin(id_series_for_init)] if "ID1" in props.columns else pd.DataFrame()
+                            prop_options_for_init = matching_props_for_init["Label de la prestation"].dropna().unique().tolist()
+                        else:
+                            prop_options_for_init = []
+                        st.session_state[key] = [p for p in saved_for_prov if p in prop_options_for_init]
 
+                # --- Main Loop for Provisions ---
                 for LabelDuPosteDeProvision in visible_types:
                     diag = tantieme_diagnostics.get(LabelDuPosteDeProvision, {})
                     id_series = diag.get("id_series", [])
                     matching_budget = budget[budget["Label de la provision"] == LabelDuPosteDeProvision]
-                    segment_label = ""
+                    
                     budget_amount = 0.0
                     if not matching_budget.empty:
-                        segment_label = str(matching_budget.iloc[0].get("Segment", "") or "")
                         budget_amount = float(pd.to_numeric(matching_budget["Provision"], errors="coerce").fillna(0).sum())
 
                     if id_series:
@@ -543,47 +607,65 @@ elif page == "Sélection des prestations":
 
                     safe_label = normalize_provision_key(LabelDuPosteDeProvision)
                     key = f"scenario_{active_scenario}_props_{safe_label}"
-                    st.session_state.setdefault("provision_label_by_key", {})[key] = LabelDuPosteDeProvision
                     
-                    # If no prestations selected, it will be an empty list, which triggers budget default
-                    saved_for_prov = get_selected_prestations(pers_scen.get("prestations_by_provision", {}), LabelDuPosteDeProvision)
-                    options = prop_options
+                    current_selected_props_for_provision = st.session_state.get(key, [])
+                    available_props = [p for p in prop_options if p not in current_selected_props_for_provision]
+
+                    st.markdown(f"#### {LabelDuPosteDeProvision} (Budget: {budget_amount:,.2f} €)")
                     
-                    # Always initialize st.session_state[key] with the persisted value for the active scenario.
-                    # This ensures that when switching scenarios, the multiselect reflects the saved state.
-                    st.session_state[key] = [p for p in saved_for_prov if p in options]
+                    col_available, col_selected = st.columns(2)
 
-                    if show_modified_only and not st.session_state.get(key):
-                        continue
+                    with col_available:
+                        st.subheader("Propositions disponibles")
+                        if available_props:
+                            for i, p in enumerate(available_props):
+                                cols_item = st.columns([0.7, 0.3])
+                                with cols_item[0]:
+                                    st.write(p)
+                                with cols_item[1]:
+                                    st.button("Ajouter", key=f"add_{safe_label}_{p}_{i}", on_click=add_prestation_to_scenario, args=(LabelDuPosteDeProvision, p, active_scenario))
+                                    st.button("Détails", key=f"view_avail_{safe_label}_{p}_{i}", on_click=set_viewed_prestation_details, args=(LabelDuPosteDeProvision, p))
+                        else:
+                            st.info("Aucune proposition disponible.")
 
-                    row_cols = st.columns([1.4, 2.4, 1.0, 3.0, 1.2, 1.2])
-                    row_cols[0].write(segment_label)
-                    row_cols[1].write(LabelDuPosteDeProvision)
-                    row_cols[2].write(f"{budget_amount:,.2f} €")
-                    with row_cols[3]:
-                        selected_props = st.multiselect(
-                            LabelDuPosteDeProvision,
-                            options,
-                            key=key,
-                            label_visibility="collapsed",
-                            disabled=len(prop_options) == 0,
-                            on_change=save_persisted_state,
-                        )
-                    prestations_by_prov[LabelDuPosteDeProvision] = selected_props
-                    if selected_props and not matching_props.empty:
+                    with col_selected:
+                        st.subheader("Prestations sélectionnées")
+                        if current_selected_props_for_provision:
+                            for i, p in enumerate(current_selected_props_for_provision):
+                                cols_item = st.columns([0.7, 0.3])
+                                with cols_item[0]:
+                                    st.write(p)
+                                with cols_item[1]:
+                                    st.button("Retirer", key=f"remove_{safe_label}_{p}_{i}", on_click=remove_prestation_from_scenario, args=(LabelDuPosteDeProvision, p, active_scenario))
+                                    st.button("Détails", key=f"view_sel_{safe_label}_{p}_{i}", on_click=set_viewed_prestation_details, args=(LabelDuPosteDeProvision, p))
+                        else:
+                            st.info("Aucune prestation sélectionnée pour ce poste.")
+                    st.markdown("---") # Separator between provisions
+
+                    # Calculate retained cost and delta for display (optional, can be removed for extreme simplification)
+                    if current_selected_props_for_provision and not matching_props.empty:
                         retained_cost = pd.to_numeric(
-                            matching_props[matching_props["Label de la prestation"].isin(selected_props)].get("Total TTC", 0),
+                            matching_props[matching_props["Label de la prestation"].isin(current_selected_props_for_provision)].get("Total TTC", 0),
                             errors="coerce",
                         ).fillna(0).sum()
                     else:
                         retained_cost = budget_amount
                     cost_delta = retained_cost - budget_amount
-                    row_cols[4].write(f"{retained_cost:,.2f} €")
-                    row_cols[5].write(f"{cost_delta:+,.2f} €")
+                    # If you want to display these, you'd need to add them back into the layout,
+                    # perhaps as a summary line below each provision's two columns.
+                    # For now, they are calculated but not displayed to keep the layout clean.
 
+                # --- Récapitulatif rapide des scénarios ---
                 st.markdown("---")
                 st.markdown("### Récapitulatif rapide des scénarios")
-                scenarios = {active_scenario: {"filter": provision_filter, "prestations_by_provision": prestations_by_prov}}
+                
+                # Reconstruct active_scenario_prestations_by_prov from st.session_state for the recap
+                active_scenario_prestations_by_prov = {}
+                for LabelDuPosteDeProvision in type_options:
+                    safe_label = normalize_provision_key(LabelDuPosteDeProvision)
+                    key = f"scenario_{active_scenario}_props_{safe_label}"
+                    active_scenario_prestations_by_prov[LabelDuPosteDeProvision] = st.session_state.get(key, [])
+
                 for i in range(1, 4):
                     if i == active_scenario:
                         selected_map = scenarios[i]["prestations_by_provision"]
