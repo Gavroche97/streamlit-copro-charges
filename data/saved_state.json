@@ -1,42 +1,67 @@
 {
-  "selected_owner_main": "Lot 225 - T4 7eme étage Batiment 2 exposé ouest",
+  "selected_owner_main": "",
   "total_tantiemes_global": 1,
   "scenarios": {
     "1": {
       "filter": [],
       "prestations_by_provision": {
-        "Contrat pompe de relevage": [],
-        "Contrat maintenance ascenseurs 3": [],
-        "Contrat maintenance toitures": [],
+        "Contrat maintenance ascenseurs 3": [
+          "Maintenance de l'ascenceur 3 (dessert 5 niveaux)"
+        ],
+        "Gaz": [
+          "1 - Consommation pour un hiver très doux"
+        ],
+        "Contrat maintenance ascenseurs 2": [
+          "Maintenance de l'ascenceur 2 (dessert 10 niveaux)"
+        ],
+        "Electricité": [],
+        "Rémunération du syndic Honoraires de gestion": [
+          "Syndic",
+          "Assistance technique d'urgence en cas de sinistres sur les parties communes 24/7"
+        ],
+        "Contrat désenfumage en circulation": [],
         "Contrat maintenance extincteurs": [],
-        "Contrat colonne sèche": [],
-        "Contrat maintenance ascenseurs 1-2": [],
-        "Contrat de maintenance des espaces verts": [],
+        "Entretien et petites réparations portes et serrures": [],
+        "Eau froide": [
+          "1 - Consommation d'eau sobre"
+        ],
+        "Contrat maintenance désenfumage": [],
+        "Contrat P2 maintenance chaufferie": [
+          "Contrat d'entretien de la chaudière à gaz, bois et granules CRAM"
+        ],
+        "Contrat maintenance ascenseurs 1-2": [
+          "Maintenance de l'ascenceur 1-2 (dessert 8 niveaux)"
+        ],
         "Contrat ventilation parking": [],
+        "Frais postaux AG": [],
+        "Contrat de maintenance des portails, portes": [
+          "Entretien porte de parking Fermetic"
+        ],
+        "Contrat maintenance VMC": [],
+        "Contrat colonne sèche": [],
+        "Frais postaux": [],
+        "Entretien et réparations sur biens immobiliers": [],
+        "Contrat pompe de relevage": [],
+        "Assurance protection juridique": [
+          "Assurance juridique Juridica"
+        ],
+        "Contrat maintenance toitures": [],
+        "Assurance multirisque": [
+          "Assurance multirisques Allianz"
+        ],
+        "Contrat de maintenance des espaces verts": [],
         "Contrat maintenance ascenseurs 1-1": [
           "Maintenance de l'ascenceur 1-1 (dessert 8 niveaux)"
         ],
         "Contrat bloc secours": [],
-        "Contrat désenfumage en circulation": [],
-        "Contrat maintenance désenfumage": [],
-        "Contrat maintenance de nettoyage": [],
-        "Eau froide": [],
-        "Assurance protection juridique": [],
-        "Frais postaux AG": [],
-        "Assurance multirisque": [],
-        "Rémunération du syndic Honoraires de gestion": [],
-        "Entretien et petites réparations portes et serrures": [],
-        "Entretien et réparations sur biens immobiliers": [],
-        "Contrat ferme porte": [],
+        "Fourniture granulés bois": [
+          "1 - Consommation pour un hiver très doux"
+        ],
         "Contrat bacs à sable": [],
-        "Electricité": [],
-        "Contrat P2 maintenance chaufferie": [],
-        "Contrat maintenance ascenseurs 2": [],
-        "Fourniture granulés bois": [],
-        "Contrat maintenance VMC": [],
-        "Frais postaux": [],
-        "Gaz": [],
-        "Contrat de maintenance des portails, portes": []
+        "Contrat maintenance de nettoyage": [
+          "Entretien des parties communes 2 passages par semaine AT+Propre"
+        ],
+        "Contrat ferme porte": []
       }
     },
     "2": {

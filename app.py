@@ -189,7 +189,6 @@ def map_id_to_tantieme(id_poste: str) -> str:
     else:
         return "TOTAL"
 
-
 _ID_TOKEN_MAP = {
     "TOTAL": ["copropri"],
     "ASC11": ["ascenseur 1-1", "ascenseur", "1-1"],
@@ -218,6 +217,10 @@ def get_owner_tantieme_for_id(id_tantieme: str, selected_owner: str, copro_df: p
     # Case 1: long form with 'ID' and 'Tantièmes' columns
     if "ID" in copro_df.columns and "Tantièmes" in copro_df.columns:
         rows = copro_df[(copro_df.get("Nom du coproprietaire") == selected_owner) & (copro_df.get("ID") == id_tantieme)]
+        # Specific filter for Parking: only rows with a stationnement label
+        if id_tantieme == "PARKING" and "Stationnement" in copro_df.columns:
+            rows = rows[rows["Stationnement"].notna() & (rows["Stationnement"].astype(str).str.strip() != "")]
+            
         if not rows.empty:
             vals = pd.to_numeric(rows["Tantièmes"], errors="coerce").fillna(0)
             return float(vals.sum())
@@ -237,12 +240,16 @@ def get_owner_tantieme_for_id(id_tantieme: str, selected_owner: str, copro_df: p
         "HALL12": "Tantièmes Hall 1-2",
         "HALL2": "Tantièmes Hall 2",
         "LOG/STAT": "Tantièmes Logement/Stationnements",
-        "PARKING": "Tantièmes Logement/Stationnements",
+        "PARKING": "Stationnement",
     }
 
     preferred_col = ID_TO_COLUMN.get(id_tantieme)
     if preferred_col and preferred_col in copro_df.columns:
         copro_rows = copro_df[copro_df.get("Nom du coproprietaire") == selected_owner]
+        # Specific filter for Parking: only rows with a stationnement label
+        if id_tantieme == "PARKING" and "Stationnement" in copro_df.columns:
+            copro_rows = copro_rows[copro_rows["Stationnement"].notna() & (copro_rows["Stationnement"].astype(str).str.strip() != "")]
+            
         if not copro_rows.empty:
             vals = copro_rows[preferred_col]
             vals_num = pd.to_numeric(vals, errors="coerce").fillna(0)
@@ -267,6 +274,10 @@ def get_owner_tantieme_for_id(id_tantieme: str, selected_owner: str, copro_df: p
 
     if matching_cols:
         copro_rows = copro_df[copro_df.get("Nom du coproprietaire") == selected_owner]
+        # Specific filter for Parking: only rows with a stationnement label
+        if id_tantieme == "PARKING" and "Stationnement" in copro_df.columns:
+            copro_rows = copro_rows[copro_rows["Stationnement"].notna() & (copro_rows["Stationnement"].astype(str).str.strip() != "")]
+
         if not copro_rows.empty:
             vals = copro_rows[matching_cols]
             vals_num = vals.apply(pd.to_numeric, errors="coerce").fillna(0)
@@ -294,7 +305,7 @@ def get_total_tantiemes_for_id(id_tantieme: str, copro_df: pd.DataFrame) -> floa
         "HALL12": "Tantièmes Hall 1-2",
         "HALL2": "Tantièmes Hall 2",
         "LOG/STAT": "Tantièmes Logement/Stationnements",
-        "PARKING": "Tantièmes Logement/Stationnements",
+        "PARKING": "Stationnement",
     }
 
     preferred_col = ID_TO_COLUMN.get(id_tantieme)
@@ -513,15 +524,15 @@ elif page == "Sélection des prestations":
                     safe_label = normalize_provision_key(LabelDuPosteDeProvision)
                     key = f"scenario_{active_scenario}_props_{safe_label}"
                     st.session_state.setdefault("provision_label_by_key", {})[key] = LabelDuPosteDeProvision
+                    
+                    # If no prestations selected, it will be an empty list, which triggers budget default
                     saved_for_prov = get_selected_prestations(pers_scen.get("prestations_by_provision", {}), LabelDuPosteDeProvision)
-                    options = [BUDGET_INITIAL_LABEL] + prop_options
-                    default_value = saved_for_prov[0] if saved_for_prov and saved_for_prov[0] in options else BUDGET_INITIAL_LABEL
+                    options = prop_options
+                    
+                    if key not in st.session_state:
+                        st.session_state[key] = [p for p in saved_for_prov if p in options]
 
-                    if key not in st.session_state or isinstance(st.session_state.get(key), list) or st.session_state.get(key) not in options:
-                        st.session_state[key] = default_value
-
-                    selected_value = st.session_state.get(key, BUDGET_INITIAL_LABEL)
-                    if show_modified_only and selected_value == BUDGET_INITIAL_LABEL:
+                    if show_modified_only and not st.session_state.get(key):
                         continue
 
                     row_cols = st.columns([1.4, 2.4, 1.0, 3.0, 1.2, 1.2])
@@ -529,7 +540,7 @@ elif page == "Sélection des prestations":
                     row_cols[1].write(LabelDuPosteDeProvision)
                     row_cols[2].write(f"{budget_amount:,.2f} €")
                     with row_cols[3]:
-                        selected_value = st.selectbox(
+                        selected_props = st.multiselect(
                             LabelDuPosteDeProvision,
                             options,
                             key=key,
@@ -537,8 +548,6 @@ elif page == "Sélection des prestations":
                             disabled=len(prop_options) == 0,
                             on_change=save_persisted_state,
                         )
-
-                    selected_props = [] if selected_value == BUDGET_INITIAL_LABEL else [selected_value]
                     prestations_by_prov[LabelDuPosteDeProvision] = selected_props
                     if selected_props and not matching_props.empty:
                         retained_cost = pd.to_numeric(
@@ -824,39 +833,53 @@ elif page == "Simulation des charges":
             st.markdown("### Détail des calculs")
             df_calc_details = pd.DataFrame(calc_details)
             df_calc_view = df_calc_details[df_calc_details["Vue"] == display_mode].copy()
+            
             detail_numeric_cols = [
                 "Tantièmes",
                 "Tantièmes utilisés",
-                "Tantièmes total",
                 "Quote-part",
                 "Coût résidence",
                 "Annuel copro",
                 "Mensuel copro",
             ]
+
             if not df_calc_view.empty:
+                # S'assurer que les colonnes sont numériques pour le calcul du total
+                for col in detail_numeric_cols:
+                    df_calc_view[col] = pd.to_numeric(df_calc_view[col], errors='coerce').fillna(0)
+
+                # Calcul des sommes pour la ligne de total
+                sums = df_calc_view[detail_numeric_cols].sum()
+                
                 total_detail_row = {
                     "Vue": display_mode,
                     "Segment": "",
-                    "Provision": "Total",
+                    "Provision": "TOTAL GÉNÉRAL",
                     "ID1": "",
                     "Prestations retenues": "",
                     "Lignes devis trouvées": "",
-                    "Tantièmes": "",
-                    "Tantièmes utilisés": "",
+                    "Tantièmes": sums["Tantièmes"],
+                    "Tantièmes utilisés": sums["Tantièmes utilisés"],
                     "Tantièmes total": total_tantiemes_reference,
-                    "Quote-part": "",
-                    "Coût résidence": df_calc_view["Coût résidence"].sum(),
-                    "Annuel copro": df_calc_view["Annuel copro"].sum(),
-                    "Mensuel copro": df_calc_view["Mensuel copro"].sum(),
+                    "Quote-part": None, # Pas de sens de sommer des ratios
+                    "Coût résidence": sums["Coût résidence"],
+                    "Annuel copro": sums["Annuel copro"],
+                    "Mensuel copro": sums["Mensuel copro"],
                     "Formule": "",
                 }
-                df_calc_view = pd.concat([df_calc_view, pd.DataFrame([total_detail_row])], ignore_index=True)
+                
+                # Construction du DataFrame final pour l'affichage
+                df_calc_display = pd.concat([df_calc_view, pd.DataFrame([total_detail_row])], ignore_index=True)
+                df_calc_display = df_calc_display.drop(columns=["Vue"])
 
-            df_calc_display = df_calc_view.drop(columns=["Vue"])
-            for col in detail_numeric_cols:
-                if col in df_calc_display.columns:
-                    df_calc_display[col] = df_calc_display[col].map(
-                        lambda x: "" if x == "" or pd.isna(x) else f"{float(x):,.4f}" if col == "Quote-part" else f"{float(x):,.2f}"
-                    )
-
-            st.dataframe(df_calc_display, use_container_width=True, hide_index=True, height=420)
+                # Formatage des colonnes numériques pour un affichage propre
+                for col in detail_numeric_cols + ["Tantièmes total"]:
+                    if col in df_calc_display.columns:
+                        if col == "Quote-part":
+                            df_calc_display[col] = df_calc_display[col].apply(lambda x: f"{x:.4f}" if pd.notnull(x) else "")
+                        else:
+                            df_calc_display[col] = df_calc_display[col].apply(lambda x: f"{x:,.2f} €" if pd.notnull(x) and x != 0 else ("0.00 €" if x == 0 else ""))
+                
+                st.dataframe(df_calc_display, use_container_width=True, hide_index=True, height=600)
+            else:
+                st.info("Aucune donnée à afficher pour ce scénario.")
