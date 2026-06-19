@@ -69,7 +69,6 @@ if "uploaded_data" not in st.session_state:
     st.session_state["uploaded_file_name"] = None
 
 expected_sheets = {
-    "Revenus": ["Label du revenu", "Montant"],
     "Budget": ["ID1", "Segment", "Classe de provision", "Label de la provision", "Provision"],
     "Propositions": ["Type de prestation", "Label de la prestation", "ID1", "Prestataire", "Cout", "Taxes", "Total TTC", "Description"],
     "Copropriétaires": [
@@ -93,8 +92,7 @@ expected_sheets = {
         "Numéro de lot",
         "Lot Nexity",
         "Etage",
-    ],
-    "Règles": ["Label des règles", "Limite", "Taxes", "Total TTC"],
+    ]
 }
 
 # Persistence file for storing selections between sessions
