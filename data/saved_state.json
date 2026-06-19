@@ -4,62 +4,65 @@
   "scenarios": {
     "1": {
       "prestations_by_provision": {
-        "Contrat maintenance ascenseurs 3": [
+        "Contrat_de_maintenance_des_espaces_verts": [],
+        "Contrat_de_maintenance_des_portails__portes": [
+          "Entretien porte de parking Fermetic"
+        ],
+        "Electricité_du_batiment_2": [],
+        "Contrat_maintenance_ascenseurs_1_2": [
+          "Maintenance de l'ascenceur 1-2 (dessert 8 niveaux)"
+        ],
+        "Electricité_du_batiment_1": [],
+        "Contrat_maintenance_de_nettoyage": [
+          "Entretien des parties communes 2 passages par semaine AT+Propre"
+        ],
+        "Contrat_maintenance_ascenseurs_2": [
+          "Maintenance de l'ascenceur 2 (dessert 10 niveaux)"
+        ],
+        "Entretien_et_petites_réparations_portes_et_serrures": [],
+        "Assurance_multirisque": [
+          "Assurance multirisques Allianz"
+        ],
+        "Contrat_pompe_de_relevage": [],
+        "Assurance_protection_juridique": [
+          "Assurance juridique Juridica"
+        ],
+        "Contrat_colonne_sèche": [],
+        "Frais_postaux": [],
+        "Contrat_maintenance_extincteurs": [],
+        "Contrat_P2_maintenance_chaufferie": [
+          "Contrat d'entretien de la chaudière à gaz, bois et granules CRAM"
+        ],
+        "Contrat_maintenance_désenfumage": [],
+        "Fourniture_granulés_bois": [
+          "1 - Consommation pour un hiver très doux"
+        ],
+        "Contrat_maintenance_ascenseurs_3": [
           "Maintenance de l'ascenceur 3 (dessert 5 niveaux)"
+        ],
+        "Contrat_désenfumage_en_circulation": [],
+        "Contrat_bacs_à_sable": [],
+        "Entretien_et_réparations_sur_biens_immobiliers": [],
+        "Eau_froide": [
+          "1 - Consommation d'eau sobre"
+        ],
+        "Frais_postaux_AG": [],
+        "Contrat_maintenance_toitures": [],
+        "Contrat_maintenance_ascenseurs_1_1": [
+          "Maintenance de l'ascenceur 1-1 (dessert 8 niveaux)"
+        ],
+        "Electricité": [],
+        "Contrat_bloc_secours": [],
+        "Electricité_du_batiment_3": [],
+        "Contrat_ventilation_parking": [],
+        "Rémunération_du_syndic_Honoraires_de_gestion": [
+          "Syndic"
         ],
         "Gaz": [
           "1 - Consommation pour un hiver très doux"
         ],
-        "Contrat maintenance ascenseurs 2": [
-          "Maintenance de l'ascenceur 2 (dessert 10 niveaux)"
-        ],
-        "Electricité": [],
-        "Rémunération du syndic Honoraires de gestion": [
-          "Syndic"
-        ],
-        "Contrat désenfumage en circulation": [],
-        "Contrat maintenance extincteurs": [],
-        "Entretien et petites réparations portes et serrures": [],
-        "Contrat P2 maintenance chaufferie": [
-          "Contrat d'entretien de la chaudière à gaz, bois et granules CRAM"
-        ],
-        "Contrat maintenance désenfumage": [],
-        "Eau froide": [
-          "1 - Consommation d'eau sobre"
-        ],
-        "Contrat maintenance ascenseurs 1-2": [
-          "Maintenance de l'ascenceur 1-2 (dessert 8 niveaux)"
-        ],
-        "Contrat ventilation parking": [],
-        "Frais postaux AG": [],
-        "Contrat de maintenance des portails, portes": [
-          "Entretien porte de parking Fermetic"
-        ],
-        "Contrat maintenance VMC": [],
-        "Contrat colonne sèche": [],
-        "Frais postaux": [],
-        "Entretien et réparations sur biens immobiliers": [],
-        "Contrat pompe de relevage": [],
-        "Assurance protection juridique": [
-          "Assurance juridique Juridica"
-        ],
-        "Contrat maintenance toitures": [],
-        "Assurance multirisque": [
-          "Assurance multirisques Allianz"
-        ],
-        "Contrat de maintenance des espaces verts": [],
-        "Contrat maintenance ascenseurs 1-1": [
-          "Maintenance de l'ascenceur 1-1 (dessert 8 niveaux)"
-        ],
-        "Contrat bloc secours": [],
-        "Fourniture granulés bois": [
-          "1 - Consommation pour un hiver très doux"
-        ],
-        "Contrat bacs à sable": [],
-        "Contrat maintenance de nettoyage": [
-          "Entretien des parties communes 2 passages par semaine AT+Propre"
-        ],
-        "Contrat ferme porte": []
+        "Contrat_ferme_porte": [],
+        "Contrat_maintenance_VMC": []
       },
       "filter": []
     },

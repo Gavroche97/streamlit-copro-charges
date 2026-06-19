@@ -15,7 +15,16 @@ st.markdown(
     [data-testid="stSidebar"] > div:first-child {{background-color: {SIDEBAR_BG} !important; color: {SIDEBAR_TEXT} !important;}}
     [data-testid="stSidebar"] * {{color: {SIDEBAR_TEXT} !important;}}
     .css-1d391kg, .css-1v3fvcr {{color: {SIDEBAR_TEXT} !important;}}
-    button {{color: #ffffff !important;}}
+    button {{
+        color: #ffffff !important;
+        background-color: #5c2d91 !important;
+        border: none !important;
+        border-radius: 8px !important;
+        transition: background-color 0.3s ease !important;
+    }}
+    button:hover {{
+        background-color: #7c3fa8 !important;
+    }}
     .stDownloadButton button {{
         background: linear-gradient(135deg, #5c2d91 0%, #7c3fa8 100%) !important;
         color: #ffffff !important;
@@ -138,41 +147,30 @@ def save_persisted_state():
         current_persisted_data["scenarios"] = {}
 
     # Parcourir tous les scénarios possibles (1, 2, 3)
-    # et mettre à jour leur état en fonction de ce qui est actuellement dans st.session_state.
-    # Cela garantit que seules les données du scénario *actuellement rendu* sont mises à jour,
-    # tandis que les données des autres scénarios (non rendus) restent telles qu'elles ont été chargées.
     for i in range(1, 4):
         scenario_key = str(i)
         
-        # S'assurer que la structure de ce scénario existe dans les données chargées
         if scenario_key not in current_persisted_data["scenarios"]:
             current_persisted_data["scenarios"][scenario_key] = {}
         
-        # Mettre à jour le filtre pour ce scénario s'il est dans session_state
         filter_key = f"scenario_{i}_type_filter"
         if filter_key in st.session_state:
             current_persisted_data["scenarios"][scenario_key]["filter"] = st.session_state.get(filter_key)
-        # Si la clé de filtre n'est PAS dans session_state, cela signifie que ce scénario n'est pas actif
-        # ou que son filtre a été effacé. Nous ne devrions PAS écraser le filtre persistant avec une liste vide
-        # à moins qu'il n'ait été explicitement effacé pour le scénario actif.
-        # La logique actuelle est : si filter_key est dans st.session_state, le mettre à jour. C'est correct.
 
-        # Collecter les prestations pour ce scénario depuis st.session_state
-        # Cela ne trouvera des clés que pour le scénario *actuellement rendu*.
         prestations_for_this_scenario = {}
         prefix = f"scenario_{i}_props_"
-        provision_label_by_key = st.session_state.get("provision_label_by_key", {}) # Ce dict est rempli lorsque les multiselects sont rendus
+        
+        # Utiliser une approche plus directe si possible ou s'assurer que provision_label_by_key est stable
+        provision_label_by_key = st.session_state.get("provision_label_by_key", {})
 
         found_any_prestations_for_this_scenario = False
         for k, v in st.session_state.items():
             if k.startswith(prefix):
+                # On stocke par clé normalisée pour éviter les problèmes de caractères spéciaux
+                normalized_name = k.replace(prefix, "")
+                prestations_for_this_scenario[normalized_name] = v if isinstance(v, list) else []
                 found_any_prestations_for_this_scenario = True
-                prov_label = provision_label_by_key.get(k, k.replace(prefix, "").replace("_", " "))
-                prestations_for_this_scenario[prov_label] = v if isinstance(v, list) else ([v] if v and v != BUDGET_INITIAL_LABEL else [])
         
-        # Mettre à jour prestations_by_provision uniquement si des clés ont été trouvées pour ce scénario dans st.session_state.
-        # Cela évite d'écraser les prestations sauvegardées d'un scénario avec un dictionnaire vide
-        # si ce scénario n'est pas actuellement actif/rendu.
         if found_any_prestations_for_this_scenario:
             current_persisted_data["scenarios"][scenario_key]["prestations_by_provision"] = prestations_for_this_scenario
 
@@ -207,9 +205,7 @@ def remove_prestation_from_scenario(provision_label, prestation_label, active_sc
 def set_viewed_prestation_details(provision_label, prestation_label):
     st.session_state['current_viewed_prestation_label'] = prestation_label
     st.session_state['current_viewed_provision_label'] = provision_label
-    # Force a rerun to display details immediately
-    st.rerun()
-
+    st.session_state['scroll_to_details_triggered'] = True # Déclenche le défilement
 
 def map_id_to_tantieme(id_poste: str) -> str:
     """Map Budget.ID1 to the ID used for tantièmes (DAX mapping provided by user)."""
@@ -457,6 +453,8 @@ elif page == "Sélection des prestations":
             st.session_state['current_viewed_prestation_label'] = None
         if 'current_viewed_provision_label' not in st.session_state:
             st.session_state['current_viewed_provision_label'] = None
+        if 'scroll_to_details_triggered' not in st.session_state:
+            st.session_state['scroll_to_details_triggered'] = False
         props = data.get("Propositions", pd.DataFrame())
         copro = data.get("Copropriétaires", pd.DataFrame())
         budget = data.get("Budget", pd.DataFrame())
@@ -533,6 +531,7 @@ elif page == "Sélection des prestations":
                     provision_filter = st.multiselect("Afficher seulement certains postes", type_options, key=filter_key, on_change=save_persisted_state)
                 with control_cols[1]:
                     # show_modified_only checkbox removed for simplification
+                    pass
                 if st.button("Réinitialiser le scénario actif"):
                     for LabelDuPosteDeProvision in type_options:
                         key = f"scenario_{active_scenario}_props_{normalize_provision_key(LabelDuPosteDeProvision)}"
@@ -543,7 +542,7 @@ elif page == "Sélection des prestations":
 
                 # --- Prestation Details Display Area ---
                 st.markdown("---")
-                st.subheader("Détails de la prestation sélectionnée")
+                st.markdown('<h3 id="prestation_details_anchor">Détails de la prestation sélectionnée</h3>', unsafe_allow_html=True)
                 if st.session_state['current_viewed_prestation_label']:
                     viewed_prestation_label = st.session_state['current_viewed_prestation_label']
                     viewed_provision_label = st.session_state['current_viewed_provision_label']
@@ -558,14 +557,34 @@ elif page == "Sélection des prestations":
                         st.write(f"**Poste de provision:** {viewed_provision_label}")
                         st.write(f"**Prestation:** {detail.get('Label de la prestation', 'N/A')}")
                         st.write(f"**Prestataire:** {detail.get('Prestataire', 'N/A')}")
-                        st.write(f"**Coût (HT):** {detail.get('Cout', 0):,.2f} €")
-                        st.write(f"**Taxes:** {detail.get('Taxes', 0):,.2f} €")
-                        st.write(f"**Total TTC:** {detail.get('Total TTC', 0):,.2f} €")
+                        
+                        cost_ht = pd.to_numeric(detail.get('Cout', 0), errors='coerce')
+                        taxes = pd.to_numeric(detail.get('Taxes', 0), errors='coerce')
+                        total_ttc = pd.to_numeric(detail.get('Total TTC', 0), errors='coerce')
+                        
+                        st.write(f"**Coût (HT):** {float(cost_ht if pd.notnull(cost_ht) else 0):,.2f} €")
+                        st.write(f"**Taxes:** {float(taxes if pd.notnull(taxes) else 0):,.2f} €")
+                        st.write(f"**Total TTC:** {float(total_ttc if pd.notnull(total_ttc) else 0):,.2f} €")
                         st.write(f"**Description:** {detail.get('Description', 'N/A')}")
                     else:
                         st.info("Détails non trouvés pour la prestation sélectionnée.")
                 else:
                     st.info("Cliquez sur 'Détails' à côté d'une prestation pour afficher ses informations ici.")
+                
+                # JavaScript pour faire défiler la page si un détail a été demandé
+                if st.session_state.get('scroll_to_details_triggered', False):
+                    st.markdown(
+                        """
+                        <script>
+                            var element = document.getElementById('prestation_details_anchor');
+                            if (element) {
+                                element.scrollIntoView({behavior: 'smooth', block: 'start'});
+                            }
+                        </script>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    st.session_state['scroll_to_details_triggered'] = False # Réinitialise le déclencheur
                 st.markdown("---")
 
                 visible_types = type_options if not provision_filter else provision_filter
@@ -610,6 +629,10 @@ elif page == "Sélection des prestations":
                     
                     current_selected_props_for_provision = st.session_state.get(key, [])
                     available_props = [p for p in prop_options if p not in current_selected_props_for_provision]
+
+                    # Masquer les postes de provision sans prestations disponibles ou sélectionnées
+                    if not available_props and not current_selected_props_for_provision:
+                        continue
 
                     st.markdown(f"#### {LabelDuPosteDeProvision} (Budget: {budget_amount:,.2f} €)")
                     
@@ -668,7 +691,7 @@ elif page == "Sélection des prestations":
 
                 for i in range(1, 4):
                     if i == active_scenario:
-                        selected_map = scenarios[i]["prestations_by_provision"]
+                        selected_map = active_scenario_prestations_by_prov
                     else:
                         selected_map = persisted.get("scenarios", {}).get(str(i), {}).get("prestations_by_provision", {})
 
