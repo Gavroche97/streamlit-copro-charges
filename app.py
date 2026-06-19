@@ -202,11 +202,6 @@ def remove_prestation_from_scenario(provision_label, prestation_label, active_sc
         st.session_state[key].remove(prestation_label)
     save_persisted_state()
 
-def set_viewed_prestation_details(provision_label, prestation_label):
-    st.session_state['current_viewed_prestation_label'] = prestation_label
-    st.session_state['current_viewed_provision_label'] = provision_label
-    st.session_state['scroll_to_details_triggered'] = True # Déclenche le défilement
-
 def map_id_to_tantieme(id_poste: str) -> str:
     """Map Budget.ID1 to the ID used for tantièmes (DAX mapping provided by user)."""
     if not isinstance(id_poste, str):
@@ -448,13 +443,6 @@ elif page == "Sélection des prestations":
         st.warning("Aucun fichier importé. Veuillez d'abord importer le fichier Excel sur la page 'Importer le fichier'.")
     else:
         data = st.session_state["uploaded_data"]
-        # Ensure detail view state is initialized
-        if 'current_viewed_prestation_label' not in st.session_state:
-            st.session_state['current_viewed_prestation_label'] = None
-        if 'current_viewed_provision_label' not in st.session_state:
-            st.session_state['current_viewed_provision_label'] = None
-        if 'scroll_to_details_triggered' not in st.session_state:
-            st.session_state['scroll_to_details_triggered'] = False
         props = data.get("Propositions", pd.DataFrame())
         copro = data.get("Copropriétaires", pd.DataFrame())
         budget = data.get("Budget", pd.DataFrame())
@@ -540,53 +528,6 @@ elif page == "Sélection des prestations":
                     save_persisted_state()
                     st.rerun()
 
-                # --- Prestation Details Display Area ---
-                st.markdown("---")
-                st.markdown('<h3 id="prestation_details_anchor">Détails de la prestation sélectionnée</h3>', unsafe_allow_html=True)
-                if st.session_state['current_viewed_prestation_label']:
-                    viewed_prestation_label = st.session_state['current_viewed_prestation_label']
-                    viewed_provision_label = st.session_state['current_viewed_provision_label']
-                    
-                    # Find the prestation in the 'Propositions' DataFrame
-                    details_df = props[
-                        (props["Label de la prestation"] == viewed_prestation_label)
-                    ]
-                    
-                    if not details_df.empty:
-                        detail = details_df.iloc[0]
-                        st.write(f"**Poste de provision:** {viewed_provision_label}")
-                        st.write(f"**Prestation:** {detail.get('Label de la prestation', 'N/A')}")
-                        st.write(f"**Prestataire:** {detail.get('Prestataire', 'N/A')}")
-                        
-                        cost_ht = pd.to_numeric(detail.get('Cout', 0), errors='coerce')
-                        taxes = pd.to_numeric(detail.get('Taxes', 0), errors='coerce')
-                        total_ttc = pd.to_numeric(detail.get('Total TTC', 0), errors='coerce')
-                        
-                        st.write(f"**Coût (HT):** {float(cost_ht if pd.notnull(cost_ht) else 0):,.2f} €")
-                        st.write(f"**Taxes:** {float(taxes if pd.notnull(taxes) else 0):,.2f} €")
-                        st.write(f"**Total TTC:** {float(total_ttc if pd.notnull(total_ttc) else 0):,.2f} €")
-                        st.write(f"**Description:** {detail.get('Description', 'N/A')}")
-                    else:
-                        st.info("Détails non trouvés pour la prestation sélectionnée.")
-                else:
-                    st.info("Cliquez sur 'Détails' à côté d'une prestation pour afficher ses informations ici.")
-                
-                # JavaScript pour faire défiler la page si un détail a été demandé
-                if st.session_state.get('scroll_to_details_triggered', False):
-                    st.markdown(
-                        """
-                        <script>
-                            var element = document.getElementById('prestation_details_anchor');
-                            if (element) {
-                                element.scrollIntoView({behavior: 'smooth', block: 'start'});
-                            }
-                        </script>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    st.session_state['scroll_to_details_triggered'] = False # Réinitialise le déclencheur
-                st.markdown("---")
-
                 visible_types = type_options if not provision_filter else provision_filter
 
                 # Initialize session state for current scenario's prestations if not already done
@@ -644,10 +585,57 @@ elif page == "Sélection des prestations":
                             for i, p in enumerate(available_props):
                                 cols_item = st.columns([0.7, 0.3])
                                 with cols_item[0]:
-                                    st.write(p)
+                                    st.write(f"**{p}**")
+
+                                    detail_df = props[
+                                        props["Label de la prestation"] == p
+                                    ]
+
+                                    if not detail_df.empty:
+                                        detail = detail_df.iloc[0]
+
+                                        with st.expander("Voir les détails"):
+                                            cost_ht = pd.to_numeric(
+                                                detail.get("Cout", 0),
+                                                errors="coerce"
+                                            )
+
+                                            taxes = pd.to_numeric(
+                                                detail.get("Taxes", 0),
+                                                errors="coerce"
+                                            )
+
+                                            total_ttc = pd.to_numeric(
+                                                detail.get("Total TTC", 0),
+                                                errors="coerce"
+                                            )
+
+                                            st.write(
+                                                f"**Prestataire :** {detail.get('Prestataire', 'N/A')}"
+                                            )
+
+                                            st.write(
+                                                f"**Coût HT :** {float(cost_ht if pd.notnull(cost_ht) else 0):,.2f} €"
+                                            )
+
+                                            st.write(
+                                                f"**Taxes :** {float(taxes if pd.notnull(taxes) else 0):,.2f} €"
+                                            )
+
+                                            st.write(
+                                                f"**Total TTC :** {float(total_ttc if pd.notnull(total_ttc) else 0):,.2f} €"
+                                            )
+
+                                            st.write(
+                                                f"**Description :** {detail.get('Description', 'N/A')}"
+                                            )
                                 with cols_item[1]:
-                                    st.button("Ajouter", key=f"add_{safe_label}_{p}_{i}", on_click=add_prestation_to_scenario, args=(LabelDuPosteDeProvision, p, active_scenario))
-                                    st.button("Détails", key=f"view_avail_{safe_label}_{p}_{i}", on_click=set_viewed_prestation_details, args=(LabelDuPosteDeProvision, p))
+                                    st.button(
+                                        "Ajouter",
+                                        key=f"add_{safe_label}_{p}_{i}",
+                                        on_click=add_prestation_to_scenario,
+                                        args=(LabelDuPosteDeProvision, p, active_scenario)
+                                    )
                         else:
                             st.info("Aucune proposition disponible.")
 
@@ -657,10 +645,57 @@ elif page == "Sélection des prestations":
                             for i, p in enumerate(current_selected_props_for_provision):
                                 cols_item = st.columns([0.7, 0.3])
                                 with cols_item[0]:
-                                    st.write(p)
+                                    st.write(f"**{p}**")
+
+                                    detail_df = props[
+                                        props["Label de la prestation"] == p
+                                    ]
+
+                                    if not detail_df.empty:
+                                        detail = detail_df.iloc[0]
+
+                                        with st.expander("Voir les détails"):
+                                            cost_ht = pd.to_numeric(
+                                                detail.get("Cout", 0),
+                                                errors="coerce"
+                                            )
+
+                                            taxes = pd.to_numeric(
+                                                detail.get("Taxes", 0),
+                                                errors="coerce"
+                                            )
+
+                                            total_ttc = pd.to_numeric(
+                                                detail.get("Total TTC", 0),
+                                                errors="coerce"
+                                            )
+
+                                            st.write(
+                                                f"**Prestataire :** {detail.get('Prestataire', 'N/A')}"
+                                            )
+
+                                            st.write(
+                                                f"**Coût HT :** {float(cost_ht if pd.notnull(cost_ht) else 0):,.2f} €"
+                                            )
+
+                                            st.write(
+                                                f"**Taxes :** {float(taxes if pd.notnull(taxes) else 0):,.2f} €"
+                                            )
+
+                                            st.write(
+                                                f"**Total TTC :** {float(total_ttc if pd.notnull(total_ttc) else 0):,.2f} €"
+                                            )
+
+                                            st.write(
+                                                f"**Description :** {detail.get('Description', 'N/A')}"
+                                            )
                                 with cols_item[1]:
-                                    st.button("Retirer", key=f"remove_{safe_label}_{p}_{i}", on_click=remove_prestation_from_scenario, args=(LabelDuPosteDeProvision, p, active_scenario))
-                                    st.button("Détails", key=f"view_sel_{safe_label}_{p}_{i}", on_click=set_viewed_prestation_details, args=(LabelDuPosteDeProvision, p))
+                                    st.button(
+                                        "Retirer",
+                                        key=f"remove_{safe_label}_{p}_{i}",
+                                        on_click=remove_prestation_from_scenario,
+                                        args=(LabelDuPosteDeProvision, p, active_scenario)
+                                    )
                         else:
                             st.info("Aucune prestation sélectionnée pour ce poste.")
                     st.markdown("---") # Separator between provisions
