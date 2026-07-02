@@ -4,10 +4,10 @@
 # ============================================================================
 
 import streamlit as st
-# import pandas as pd
-# import os
-# import json
-# import streamlit.components.v1 as components
+import pandas as pd
+import os
+import json
+import streamlit.components.v1 as components
 
 # ============================================================================
 # CONFIGURATION DE LA PAGE
