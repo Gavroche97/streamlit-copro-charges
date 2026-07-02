@@ -4,17 +4,21 @@
 # ============================================================================
 
 import streamlit as st
-# import pandas as pd
-# import os
-# import json
-# import streamlit.components.v1 as components
+import pandas as pd
+import os
+import json
+import streamlit.components.v1 as components
 
 
 # ============================================================================
 # CONFIGURATION DE LA PAGE
 # ============================================================================
 
-st.set_page_config(page_title="Calculateur de Charges de Copropriété", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="Calculateur de Charges de Copropriété", 
+    layout="wide", 
+    initial_sidebar_state="expanded"
+)
 
 # Couleurs de la barre latérale
 SIDEBAR_BG = "#2d0b53"  # Fond violet foncé
