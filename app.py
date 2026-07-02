@@ -1024,7 +1024,7 @@ elif page == "Simulation des charges":
         # Restauration du total des tantièmes de référence
         if "total_tantiemes_global" not in st.session_state:
             st.session_state["total_tantiemes_global"] = int(persisted.get("total_tantiemes_global", 10007) or 10007)
-        total_tantiemes_reference = int(st.session_state.get("total_tantiemes_global", 10007) or 10007)
+            total_tantiemes_reference = int(st.session_state.get("total_tantiemes_global", 10007) or 10007)
 
             # ============================================================================
             # CONSTRUCTION DES ITEMS DE BUDGET
