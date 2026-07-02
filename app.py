@@ -3,7 +3,7 @@
 # Application Streamlit pour simuler l'impact des prestations sur les charges
 # ============================================================================
 
-# import streamlit as st
+import streamlit as st
 # import pandas as pd
 # import os
 # import json
