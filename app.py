@@ -9,6 +9,7 @@ import os
 import json
 import streamlit.components.v1 as components
 
+
 # ============================================================================
 # CONFIGURATION DE LA PAGE
 # ============================================================================
