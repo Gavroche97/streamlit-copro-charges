@@ -1008,13 +1008,13 @@ elif page == "Simulation des charges":
         if budget.empty or copro.empty:
             st.error("Les feuilles 'Budget' et 'Copropriétaires' sont nécessaires pour cette simulation.")
         else:
-        # Configuration des paramètres de simulation
-        # Slider pour ajuster la consommation individuelle de chauffage (0-200%)
-        cons_frac = st.slider("Consommation individuelle de chauffage (%)", 0, 200, 100) / 100.0
+            # Configuration des paramètres de simulation
+            # Slider pour ajuster la consommation individuelle de chauffage (0-200%)
+            cons_frac = st.slider("Consommation individuelle de chauffage (%)", 0, 200, 100) / 100.0
 
-        # Chargement des scénarios persistés et restauration du propriétaire sélectionné si manquant
-        persisted = load_persisted_state()
-        scenarios_persist = persisted.get("scenarios", {})
+            # Chargement des scénarios persistés et restauration du propriétaire sélectionné si manquant
+            persisted = load_persisted_state()
+            scenarios_persist = persisted.get("scenarios", {})
         
         # Restauration du propriétaire sélectionné depuis l'état persistant
         if "selected_owner_main" not in st.session_state or not st.session_state.get("selected_owner_main"):
