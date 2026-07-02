@@ -3,11 +3,11 @@
 # Application Streamlit pour simuler l'impact des prestations sur les charges
 # ============================================================================
 
-""" import streamlit as st
-import pandas as pd
-import os
-import json
-import streamlit.components.v1 as components """
+# import streamlit as st
+# import pandas as pd
+# import os
+# import json
+# import streamlit.components.v1 as components
 
 # ============================================================================
 # CONFIGURATION DE LA PAGE
